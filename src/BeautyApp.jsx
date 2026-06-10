@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { db } from "./firebase";
+import {
+  collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
+  onSnapshot, setDoc, serverTimestamp, query, orderBy
+} from "firebase/firestore";
 
 const P = "#7C6BC4";
 const PL = "#EDE8F8";
@@ -638,7 +643,7 @@ function CustModal({ onSelect, onClose }) {
 }
 
 // ── 예약 등록 팝업 (예약금 금액 입력 추가) ──────────────
-function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30 }) {
+function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30, onSave }) {
   const [f, setF] = useState({
     sid: initSid !== null && initSid !== undefined ? String(initSid) : "0",
     cid:"", name:"", phone:"",
@@ -845,10 +850,9 @@ function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30 
             </div>
           </div>
 
-          <button onClick={() => {
-            // 예약 BKS에 저장
+          <button onClick={async () => {
             if(f.name||f.cid) {
-              BKS = [...BKS, {
+              const newBk = {
                 id: Date.now(),
                 sid: Number(f.sid),
                 date: f.date,
@@ -860,7 +864,12 @@ function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30 
                 dep: f.dep || "unpaid",
                 depAmt: Number(f.depAmt) || 0,
                 memo: f.memo,
-              }];
+              };
+              if(onSave) {
+                await onSave(newBk); // Firestore 저장
+              } else {
+                BKS = [...BKS, newBk]; // fallback
+              }
             }
             onClose();
           }}
@@ -2545,6 +2554,11 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
 
 // ── 앱 루트 ───────────────────────────────────────────
 export default function App({ session, onLogout }) {
+  const uid = session?.uid;
+  // Firestore 컬렉션 경로 헬퍼
+  const col = (name) => collection(db, "modu_shops", uid, name);
+  const ref = (name, id) => doc(db, "modu_shops", uid, name, id);
+
   const [tab, setTab] = useState("home");
   const [menuOpen, setMenu] = useState(false);
   const [ttDate, setTtDate] = useState(TODAY);
@@ -2552,6 +2566,67 @@ export default function App({ session, onLogout }) {
   const [modal, setModal] = useState(null);
   const [settingsSub, setSettingsSub] = useState(null);
   const [staff, setStaff] = useState([{id:0,name:"담당자1",bg:PS},{id:1,name:"담당자2",bg:WH}]);
+
+  // ── Firebase 연동 데이터 ──────────────────────────
+  const [bookings, setBookings] = useState([]); // Firestore 예약 목록
+  const [customers, setCustomers] = useState([]); // Firestore 고객 목록
+  const [dbLoading, setDbLoading] = useState(true);
+
+  // 예약 실시간 구독
+  useEffect(() => {
+    if(!uid) return;
+    const q = query(col("bookings"), orderBy("date","asc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(d => ({...d.data(), firestoreId: d.id}));
+      setBookings(data);
+      // 전역 BKS도 동기화 (기존 컴포넌트들이 BKS를 직접 참조하므로)
+      BKS = data;
+      setDbLoading(false);
+    }, () => setDbLoading(false));
+    return () => unsub();
+  }, [uid]);
+
+  // 고객 실시간 구독
+  useEffect(() => {
+    if(!uid) return;
+    const unsub = onSnapshot(col("customers"), (snap) => {
+      const data = snap.docs.map(d => ({...d.data(), firestoreId: d.id}));
+      setCustomers(data);
+      CUSTS = data;
+    });
+    return () => unsub();
+  }, [uid]);
+
+  // 예약 추가
+  async function addBooking(bk) {
+    if(!uid) return;
+    const docRef = await addDoc(col("bookings"), {...bk, createdAt: serverTimestamp()});
+    return docRef.id;
+  }
+
+  // 예약 수정
+  async function updateBooking(firestoreId, data) {
+    if(!uid || !firestoreId) return;
+    await updateDoc(ref("bookings", firestoreId), data);
+  }
+
+  // 예약 삭제
+  async function removeBooking(firestoreId) {
+    if(!uid || !firestoreId) return;
+    await deleteDoc(ref("bookings", firestoreId));
+  }
+
+  // 고객 추가/수정
+  async function saveCustomer(cust) {
+    if(!uid) return;
+    if(cust.firestoreId) {
+      await updateDoc(ref("customers", cust.firestoreId), cust);
+    } else {
+      await addDoc(col("customers"), {...cust, createdAt: serverTimestamp()});
+    }
+  }
+  // ─────────────────────────────────────────────────
+
   const [showPay, setShowPay] = useState(null);
   const [payMethod, setPayMethod] = useState("");
   const [payMemo, setPayMemo] = useState("");
@@ -2560,9 +2635,9 @@ export default function App({ session, onLogout }) {
   const [payBonus, setPayBonus] = useState("");
   const [bonusRates, setBonusRates] = useState({naverpay:0,card:10,cash:20});
   // 결제취소 확인 모달
-  const [confirmCancel, setConfirmCancel] = useState(null); // {id, name}
+  const [confirmCancel, setConfirmCancel] = useState(null);
   // 제품 추가
-  const [productItems, setProductItems] = useState([]); // [{name, price}]
+  const [productItems, setProductItems] = useState([]);
   // 시술 기록
   const [showRecord, setShowRecord] = useState(null);
   const [treatmentRecords, setTreatmentRecords] = useState({});
@@ -2658,6 +2733,22 @@ export default function App({ session, onLogout }) {
     {l:"문자발송",a:null},
   ];
 
+  if(dbLoading) return (
+    <div style={{minHeight:"100vh",background:"#7C6BC4",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Noto Sans KR',sans-serif"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{width:56,height:56,borderRadius:18,background:"rgba(255,255,255,0.2)",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+            <rect x="16" y="2" width="4" height="15" rx="2" fill="rgba(255,255,255,0.95)"/>
+            <ellipse cx="18" cy="19" rx="5.5" ry="3.5" fill="white"/>
+            <ellipse cx="18" cy="22" rx="4" ry="2.2" fill="rgba(255,255,255,0.7)"/>
+          </svg>
+        </div>
+        <p style={{color:"rgba(255,255,255,0.9)",fontSize:16,fontFamily:"Georgia,serif",letterSpacing:2}}>Modu Beauty</p>
+        <p style={{color:"rgba(255,255,255,0.6)",fontSize:12,marginTop:4}}>데이터 불러오는 중...</p>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{fontFamily:"'Noto Sans KR','Apple SD Gothic Neo',sans-serif",background:BG,minHeight:"100vh",width:"100%",maxWidth:430,margin:"0 auto",paddingBottom:72,overflowX:"hidden",boxSizing:"border-box"}}>
       {tab!=="timetable" && (
@@ -2735,7 +2826,7 @@ export default function App({ session, onLogout }) {
         </>
       )}
 
-      {modal && <BookModal initTime={modal.time} initSid={modal.sid} onClose={() => setModal(null)} staff={staff} onAddStaff={addStaff} slotUnit={slotUnit}/>}
+      {modal && <BookModal initTime={modal.time} initSid={modal.sid} onClose={() => setModal(null)} staff={staff} onAddStaff={addStaff} slotUnit={slotUnit} onSave={addBooking}/>}
 
       {/* 시술 기록 팝업 */}
       {showRecord && <TreatmentRecordModal bk={showRecord} onClose={() => setShowRecord(null)} onSave={saveRecord}/>}
