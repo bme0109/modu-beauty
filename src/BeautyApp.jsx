@@ -1782,10 +1782,11 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   const [fs, setFs] = useState(null);
   const [showSales, setShowSales] = useState(null);
   const [showBk, setShowBk] = useState(null);
-  const [editBk, setEditBk] = useState(null); // 홈 예약 수정
+  const [editBk, setEditBk] = useState(null);
   const [swipeMap, setSwipeMap] = useState({});
   const [swipeTouchX, setSwipeTouchX] = useState({});
-  const todB = BKS.filter(b=>b.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time));
+  const [selDate, setSelDate] = useState(TODAY);
+  const todB = BKS.filter(b=>b.date===selDate).sort((a,b)=>a.time.localeCompare(b.time));
   const fil = fs===null ? todB : todB.filter(b=>b.sid===fs);
   const rev = Object.values(paidBks).filter(p=>p.date===TODAY).reduce((s,p)=>s+(p.amount||p.paidAmt||0),0);
   const mrev = Object.values(paidBks).filter(p=>p.date&&p.date.slice(0,7)===TODAY.slice(0,7)).reduce((s,p)=>s+(p.amount||p.paidAmt||0),0);
@@ -1848,11 +1849,14 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
             {Array.from({length:new Date(_tyr,_tmo-1,1).getDay()}).map((_,i)=><div key={"e"+i}/>)}
             {calD.map(({d,ds,isT,we,cnt}) => {
               const isHol=!!HOLS[ds],isRed=we||isHol;
+              const isSel=ds===selDate;
               return (
-                <div key={d} onClick={() => onDate(ds)}
-                  style={{aspectRatio:"1",borderRadius:9,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isT?P:"transparent",cursor:"pointer"}}>
-                  <span style={{fontSize:16,fontWeight:isT?700:cnt>0?600:400,color:isT?WH:isRed?RD:G7}}>{d}</span>
-                  {cnt>0&&<div style={{width:4,height:4,borderRadius:"50%",background:isT?"rgba(255,255,255,0.7)":P,marginTop:1}}/>}
+                <div key={d} onClick={() => setSelDate(ds)}
+                  style={{aspectRatio:"1",borderRadius:9,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                    background:isSel?P:isT?"#EDE8F8":"transparent",cursor:"pointer",
+                    border:isT&&!isSel?"1.5px solid "+P:"none"}}>
+                  <span style={{fontSize:16,fontWeight:isSel||isT?700:cnt>0?600:400,color:isSel?WH:isRed?RD:G7}}>{d}</span>
+                  {cnt>0&&<div style={{width:4,height:4,borderRadius:"50%",background:isSel?"rgba(255,255,255,0.7)":P,marginTop:1}}/>}
                 </div>
               );
             })}
@@ -1860,7 +1864,11 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
         </div>
 
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <span style={{fontSize:15,fontWeight:800,color:DK}}>{_tmo}월 {_td}일 ({["일","월","화","수","목","금","토"][_tn.getDay()]}) · {todB.length}건</span>
+          {(() => {
+            const sd=new Date(selDate+"T00:00:00");
+            return <span style={{fontSize:15,fontWeight:800,color:DK}}>{sd.getMonth()+1}월 {sd.getDate()}일 ({["일","월","화","수","목","금","토"][sd.getDay()]}) · {todB.length}건</span>;
+          })()}
+          {selDate!==TODAY&&<button onClick={()=>setSelDate(TODAY)} style={{background:"none",border:"1px solid "+G3,borderRadius:8,padding:"3px 9px",fontSize:10,color:G5,cursor:"pointer"}}>오늘</button>}
         </div>
         <div style={{display:"flex",gap:6,marginBottom:10,overflowX:"auto"}}>
           {[{id:null,name:"전체"},...staff].map(s => {
@@ -2079,8 +2087,8 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
     const updated={...sel,balance:sel.balance+total,total:sel.total+total,
       history:[...sel.history,{id:Date.now(),type:"charge",amount:total,date:TODAY,
         memo:(memo||"충전")+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
-    setData(p => p.map(d => d.custId===sel.custId?updated:d));
-    setSel(updated);
+    const nd=data.map(d=>d.custId===sel.custId?updated:d);
+    PREPAID_DATA=nd; setData(nd); setSel(updated);
     setAmount(""); setMemo(""); setChargeMethod(""); setBonusInput(""); setShowCharge(false);
   }
   function use() {
@@ -2088,8 +2096,8 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
     const amt=Number(amount);
     const updated={...sel,balance:sel.balance-amt,
       history:[...sel.history,{id:Date.now(),type:"use",amount:amt,date:TODAY,memo:memo||"사용"}]};
-    setData(p => p.map(d => d.custId===sel.custId?updated:d));
-    setSel(updated);
+    const nd=data.map(d=>d.custId===sel.custId?updated:d);
+    PREPAID_DATA=nd; setData(nd); setSel(updated);
     setAmount(""); setMemo(""); setShowUse(false);
   }
   function addNew() {
@@ -2100,7 +2108,8 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
     const n={custId:Date.now(),custName:newCust.trim(),balance:total,total:total,
       history:[{id:1,type:"charge",amount:total,date:TODAY,
         memo:"신규 발급"+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
-    setData(p => [...p,n]);
+    const nd=[...data,n];
+    PREPAID_DATA=nd; setData(nd);
     setNewCust(""); setNewAmt(""); setNewMethod(""); setNewBonus(""); setShowNew(false);
   }
 
@@ -2745,13 +2754,21 @@ export default function App({ session, onLogout }) {
       }
     }));
 
+    if(payMethod==="prepaid") {
+      const exist=PREPAID_DATA.find(d=>d.custName===showPay.name);
+      if(exist){
+        exist.balance=Math.max(0,exist.balance-paidAmt);
+        exist.history=[...exist.history,{id:Date.now(),type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}];
+      }
+    }
     if(payMethod==="prepaid_new") {
       const exist=PREPAID_DATA.find(d=>d.custName===showPay.name);
       const finalBalance=charge+bonus-price;
       if(exist){
         exist.total+=charge+bonus; exist.balance=exist.balance+charge+bonus-price;
-        exist.history.push({id:Date.now(),type:"charge",amount:charge+bonus,date:TODAY,memo:charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"")});
-        exist.history.push({id:Date.now()+1,type:"use",amount:price,date:TODAY,memo:showPay.svc+" 결제"});
+        exist.history=[...exist.history,
+          {id:Date.now(),type:"charge",amount:charge+bonus,date:TODAY,memo:charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"")},
+          {id:Date.now()+1,type:"use",amount:price,date:TODAY,memo:showPay.svc+" 결제"}];
       } else {
         PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,balance:finalBalance,total:charge+bonus,
           history:[{id:1,type:"charge",amount:charge+bonus,date:TODAY,memo:charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"")},{id:2,type:"use",amount:price,date:TODAY,memo:showPay.svc+" 결제"}]});
@@ -3007,11 +3024,17 @@ export default function App({ session, onLogout }) {
                   style={{width:"100%",padding:"11px 13px",borderRadius:11,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
               </div>
             )}
-            {payMethod==="prepaid" && (
-              <div style={{marginBottom:12,padding:"11px 13px",borderRadius:11,background:PL,fontSize:12,color:P,fontWeight:600}}>
-                선불권 잔액에서 {showPay.price.toLocaleString()}원 차감돼요
-              </div>
-            )}
+            {payMethod==="prepaid" && (() => {
+              const pe=PREPAID_DATA.find(d=>d.custName===showPay.name);
+              const deduct=Math.max(0,(finalAmt?Number(finalAmt):showPay.price)-(showPay.depAmt||0));
+              const afterBal=pe?pe.balance-deduct:null;
+              return (
+                <div style={{marginBottom:12,padding:"11px 13px",borderRadius:11,background:PL,fontSize:12,color:P,fontWeight:600}}>
+                  {pe?<>잔액 {pe.balance.toLocaleString()}원 → {Math.max(0,afterBal).toLocaleString()}원 ({deduct.toLocaleString()}원 차감)</>
+                     :<>선불권 잔액에서 {deduct.toLocaleString()}원 차감돼요</>}
+                </div>
+              );
+            })()}
             {payMethod==="prepaid_new" && (
               <div style={{marginBottom:12,borderRadius:13,border:"1.5px solid #2E7D52",overflow:"hidden"}}>
                 <div style={{background:"#2E7D52",padding:"8px 14px"}}>
