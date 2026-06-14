@@ -1713,7 +1713,7 @@ function SalesPage() {
 }
 
 // ── 홈 페이지 ─────────────────────────────────────────
-function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
+function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onDelete }) {
   const [fs, setFs] = useState(null);
   const [showSales, setShowSales] = useState(null);
   const [showBk, setShowBk] = useState(null);
@@ -1780,6 +1780,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
             {["일","월","화","수","목","금","토"].map((d,i) => <div key={d} style={{textAlign:"center",fontSize:9,fontWeight:600,color:i===0||i===6?RD:G5}}>{d}</div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+            {Array.from({length:new Date(_tyr,_tmo-1,1).getDay()}).map((_,i)=><div key={"e"+i}/>)}
             {calD.map(({d,ds,isT,we,cnt}) => {
               const isHol=!!HOLS[ds],isRed=we||isHol;
               return (
@@ -1839,7 +1840,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
                   </div>
                   <div style={{fontSize:10,color:G5}}>담당자{b.sid+1} · {b.svc}</div>
                 </div>
-                <span style={{fontSize:12,fontWeight:600,color:DK}}>{b.price.toLocaleString()}원</span>
+                <span style={{fontSize:12,fontWeight:600,color:isPaid?GR:DK}}>{isPaid?(paidBks[b.id].paidAmt||0).toLocaleString():b.price.toLocaleString()}원</span>
               </div>
             </div>
           );
@@ -1935,6 +1936,8 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
             </div>
             {!paidBks[showBk.id] && (
               <div style={{display:"flex",gap:9,marginTop:16}}>
+                <button onClick={() => { if(onDelete)onDelete(showBk); setShowBk(null); }}
+                  style={{padding:"13px 12px",borderRadius:14,background:"#FFF0F0",border:"1px solid "+RD,color:RD,fontSize:13,fontWeight:700,cursor:"pointer"}}>삭제</button>
                 <button onClick={() => { setEditBk({...showBk}); setShowBk(null); }}
                   style={{flex:1,padding:"13px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>수정</button>
                 <button onClick={() => {if(onPay){onPay(showBk);setShowBk(null);}}}
@@ -2737,7 +2740,7 @@ export default function App({ session, onLogout }) {
       )}
 
       <div>
-        {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit}/>}
+        {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>removeBooking(b.firestoreId)}/>}
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage/>}
