@@ -107,7 +107,7 @@ export default function LoginPage({ onLogin, onSignup }) {
           Modu Beauty
         </h1>
         <p style={{fontSize:13, color:"#9B8ED4", margin:"4px 0 2px", fontWeight:500, letterSpacing:2, marginBottom:10}}>
-          모두의 뷰티
+          모두뷰티
         </p>
       </div>
 

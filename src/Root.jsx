@@ -77,7 +77,7 @@ export default function Root() {
             color:"rgba(255,255,255,0.9)", fontSize:18,
             fontFamily:"Georgia,serif", letterSpacing:2, fontWeight:700,
           }}>Modu Beauty</p>
-          <p style={{color:"rgba(255,255,255,0.6)", fontSize:12, marginTop:4}}>모두의 뷰티</p>
+          <p style={{color:"rgba(255,255,255,0.6)", fontSize:12, marginTop:4}}>모두뷰티</p>
         </div>
       </div>
     );
