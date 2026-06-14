@@ -725,6 +725,7 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
                   {["일","월","화","수","목","금","토"].map((d,i) => <div key={d} style={{textAlign:"center",fontSize:9,fontWeight:600,color:i===0||i===6?PM:G5}}>{d}</div>)}
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+                  {Array.from({length: new Date(_bYr, _bMo-1, 1).getDay()}).map((_,i) => <div key={"e"+i}/>)}
                   {calDays.map(({d,ds,we}) => {
                     const sel = f.date===ds;
                     return (
@@ -986,8 +987,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   }
   const [cur, setCur] = useState(date);
   const [fs, setFs] = useState(null);
-  const [weekOffset, setWeekOffset] = useState(0);
-  useEffect(() => { setCur(date); setWeekOffset(0); }, [date]);
+  useEffect(() => { setCur(date); }, [date]);
   const [selBk, setSelBk] = useState(null);
   const [editBk, setEditBk] = useState(null); // 예약 수정용
   const [swipeStartX, setSwipeStartX] = useState(0);
@@ -1026,7 +1026,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   function getWeekDays() {
     const base = new Date(cur+"T00:00:00");
     const sun = new Date(base);
-    sun.setDate(base.getDate() - base.getDay() + weekOffset*7);
+    sun.setDate(base.getDate() - base.getDay());
     return Array.from({length:7}, (_,i) => {
       const d = new Date(sun);
       d.setDate(sun.getDate()+i);
@@ -1038,11 +1038,9 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   const weekLabel = (() => { const f=weekDays[0],l=weekDays[6]; return f.mo===l.mo?f.mo+"월":f.mo+"~"+l.mo+"월"; })();
 
   function shiftWeek(dir) {
-    setWeekOffset(p => p+dir);
     const base = new Date(cur+"T00:00:00");
-    const sun = new Date(base);
-    sun.setDate(base.getDate()-base.getDay()+(weekOffset+dir)*7);
-    setCur(sun.toISOString().slice(0,10));
+    base.setDate(base.getDate() + dir*7);
+    setCur(base.toISOString().slice(0,10));
   }
 
   const depLabel = dep => {
