@@ -613,11 +613,11 @@ function CustModal({ onSelect, onClose, onSaveNew }) {
 }
 
 // ── 예약 등록 팝업 (예약금 금액 입력 추가) ──────────────
-function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30, onSave, onSaveNewCust }) {
+function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, slotUnit=30, onSave, onSaveNewCust }) {
   const [f, setF] = useState({
     sid: initSid !== null && initSid !== undefined ? String(initSid) : "0",
     cid:"", name:"", phone:"",
-    date: TODAY,
+    date: initDate || TODAY,
     time: initTime || "10:00",
     svc:"", mins:"60", svcPrice:"",
     dep:"", depAmt:"",   // depAmt: 예약금 실제 금액
@@ -1019,7 +1019,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
       const snapped = Math.floor(totalMin / slotUnit) * slotUnit;
       const fh = String(Math.floor(snapped/60)).padStart(2,"0");
       const fm = String(snapped%60).padStart(2,"0");
-      onAdd(fh+":"+fm, sid);
+      onAdd(fh+":"+fm, sid, cur);
     }
   }
 
@@ -1062,10 +1062,8 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
       onTouchStart={e => setSwipeStartX(e.touches[0].clientX)}
       onTouchEnd={e => { const dx=e.changedTouches[0].clientX-swipeStartX; if(Math.abs(dx)>60){dx<0?shiftWeek(1):shiftWeek(-1);} }}>
       <div style={{background:WH,borderBottom:"1px solid "+G2,paddingTop:8,flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 12px 4px",gap:16}}>
-          <button onClick={() => shiftWeek(-1)} style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 4px",lineHeight:1}}>‹</button>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 12px 4px"}}>
           <span style={{fontSize:13,fontWeight:700,color:DK}}>{weekLabel}</span>
-          <button onClick={() => shiftWeek(1)} style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 4px",lineHeight:1}}>›</button>
         </div>
         <div style={{display:"flex",padding:"0 8px",gap:1}}>
           {weekDays.map((w,i) => (
@@ -2704,7 +2702,7 @@ export default function App({ session, onLogout }) {
   }
 
   function handleDate(ds) { setTtDate(ds); setTab("timetable"); }
-  function openModal(time,sid) { setModal({time:time||null,sid:sid!==undefined?sid:null}); }
+  function openModal(time,sid,date) { setModal({time:time||null,sid:sid!==undefined?sid:null,date:date||null}); }
   function addStaff() { setStaff(p => [...p,{id:p.length,name:"담당자"+(p.length+1),bg:p.length%2===0?PS:WH}]); }
 
   const NAV_L = [
@@ -2815,7 +2813,7 @@ export default function App({ session, onLogout }) {
         </>
       )}
 
-      {modal && <BookModal initTime={modal.time} initSid={modal.sid} onClose={() => setModal(null)} staff={staff} onAddStaff={addStaff} slotUnit={slotUnit} onSave={addBooking} onSaveNewCust={saveCustomer}/>}
+      {modal && <BookModal initTime={modal.time} initSid={modal.sid} initDate={modal.date} onClose={() => setModal(null)} staff={staff} onAddStaff={addStaff} slotUnit={slotUnit} onSave={addBooking} onSaveNewCust={saveCustomer}/>}
 
       {/* 시술 기록 팝업 */}
       {showRecord && <TreatmentRecordModal bk={showRecord} onClose={() => setShowRecord(null)} onSave={saveRecord}/>}
