@@ -59,41 +59,9 @@ const SVCS = [
   ]},
 ];
 
-let CUSTS = [
-  {id:1,name:"김민지",phone:"010-1234-5678",visits:12,revenue:480000,
-   tags:["VIP","큐티클 예민"],memo:"왼손잡이"},
-  {id:2,name:"박수진",phone:"010-2345-6789",visits:8,revenue:320000,
-   tags:["단골"],memo:""},
-  {id:3,name:"최유나",phone:"010-3456-7890",visits:3,revenue:150000,
-   tags:[],memo:""},
-  {id:4,name:"이서영",phone:"010-4567-8901",visits:5,revenue:200000,
-   tags:["노쇼 주의"],memo:"노쇼 2회"},
-];
+let CUSTS = [];
 
-let BKS = [
-  {id:1,sid:0,date:"2025-06-06",time:"10:00",mins:60,
-   name:"김민지",svc:"제거+기본젤",price:40000,dep:"naver_paid",depAmt:10000},
-  {id:2,sid:0,date:"2025-06-06",time:"12:30",mins:90,
-   name:"박수진",svc:"이달아트",price:60000,dep:"naver_paid",depAmt:20000},
-  {id:3,sid:1,date:"2025-06-06",time:"14:30",mins:60,
-   name:"최유나",svc:"풀컬러",price:50000,dep:"naver",depAmt:0},
-  {id:4,sid:1,date:"2025-06-06",time:"17:00",mins:60,
-   name:"이서영",svc:"프렌치",price:55000,dep:"unpaid",depAmt:0},
-  {id:5,sid:0,date:"2025-06-10",time:"11:00",mins:90,
-   name:"오지수",svc:"기본젤",price:35000,dep:"paid",depAmt:15000},
-  {id:6,sid:1,date:"2025-06-14",time:"14:00",mins:60,
-   name:"임하늘",svc:"이달아트",price:60000,dep:"naver",depAmt:0},
-  {id:7,sid:0,date:"2025-06-17",time:"10:00",mins:120,
-   name:"송이서",svc:"전신왁싱",price:120000,dep:"paid",depAmt:30000},
-  {id:8,sid:0,date:"2025-06-20",time:"13:00",mins:90,
-   name:"배수아",svc:"풀컬러",price:50000,dep:"unpaid",depAmt:0},
-  {id:9,sid:1,date:"2025-06-22",time:"15:00",mins:60,
-   name:"황지유",svc:"패디큐어",price:45000,dep:"naver",depAmt:0},
-  {id:10,sid:0,date:"2025-06-25",time:"11:00",mins:90,
-   name:"류아인",svc:"속눈썹연장",price:80000,dep:"paid",depAmt:20000},
-  {id:11,sid:1,date:"2025-06-25",time:"14:00",mins:60,
-   name:"노은채",svc:"제거+기본젤",price:40000,dep:"naver_paid",depAmt:10000},
-];
+let BKS = [];
 
 const WORK_START = 10; // 운영 시작
 const WORK_END   = 20; // 운영 종료
@@ -2002,12 +1970,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
     </div>
   );
 }
-let PREPAID_DATA = [
-  {custId:1,custName:"김민지",balance:150000,total:300000,
-   history:[{id:1,type:"charge",amount:300000,date:"2025-05-10",memo:"첫 충전"},{id:2,type:"use",amount:80000,date:"2025-05-20",memo:"젤네일 아트"},{id:3,type:"use",amount:70000,date:"2025-06-03",memo:"속눈썹 연장"}]},
-  {custId:2,custName:"박수진",balance:50000,total:200000,
-   history:[{id:1,type:"charge",amount:200000,date:"2025-04-01",memo:"충전"},{id:2,type:"use",amount:150000,date:"2025-05-15",memo:"패키지 사용"}]},
-];
+let PREPAID_DATA = [];
 
 function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
   const [sel, setSel] = useState(null);
@@ -2640,6 +2603,7 @@ export default function App({ session, onLogout }) {
   const [paidBks, setPaidBks] = useState({});
   const [chargeAmt, setChargeAmt] = useState("");
   const [payBonus, setPayBonus] = useState("");
+  const [finalAmt, setFinalAmt] = useState("");
   const [bonusRates, setBonusRates] = useState({naverpay:0,card:10,cash:20});
   // 결제취소 확인 모달
   const [confirmCancel, setConfirmCancel] = useState(null);
@@ -2651,7 +2615,7 @@ export default function App({ session, onLogout }) {
   // 예약 단위 (15분 or 30분)
   const [slotUnit, setSlotUnit] = useState(30);
 
-  function openPayment(bk) { setShowPay(bk); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); }
+  function openPayment(bk) { setShowPay(bk); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt(""); }
   function openRecord(bk) { setShowRecord(bk); }
   function requestCancelPay(bkId, bkName) {
     setConfirmCancel({ id: bkId, name: bkName });
@@ -2668,7 +2632,7 @@ export default function App({ session, onLogout }) {
   function completePayment() {
     if(!payMethod||!showPay) return;
     if(payMethod==="prepaid_new"&&!chargeAmt) return;
-    const price = showPay.price;
+    const price = finalAmt ? Number(finalAmt) : showPay.price;
     const depAmt = showPay.depAmt || 0;
     const prodTotal = productItems.reduce((s,x) => s+(Number(x.price)||0), 0);
     // 실제 오늘 결제금액 = 잔금 + 제품금액
@@ -2718,7 +2682,7 @@ export default function App({ session, onLogout }) {
       if(exist){exist.balance+=bonus;exist.total+=bonus;exist.history.push({id:Date.now(),type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"});}
       else{PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,balance:bonus,total:bonus,history:[{id:1,type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]});}
     }
-    setShowPay(null); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]);
+    setShowPay(null); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt("");
   }
 
   function handleDate(ds) { setTtDate(ds); setTab("timetable"); }
@@ -2871,6 +2835,29 @@ export default function App({ session, onLogout }) {
               )}
             </div>
 
+            {/* 최종 시술 금액 */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:G5,fontWeight:700,marginBottom:6}}>
+                최종 시술 금액
+                <span style={{fontSize:10,fontWeight:400,marginLeft:6,color:G5}}>기본가 {showPay.price.toLocaleString()}원</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",padding:"11px 14px",borderRadius:12,border:"1.5px solid "+(finalAmt&&Number(finalAmt)!==showPay.price?P:G2),background:WH,gap:8}}>
+                <input
+                  value={finalAmt}
+                  onChange={e => setFinalAmt(e.target.value)}
+                  type="number"
+                  placeholder={String(showPay.price)}
+                  style={{flex:1,border:"none",background:"transparent",fontSize:20,fontWeight:800,color:DK,outline:"none"}}
+                />
+                <span style={{fontSize:14,color:G5}}>원</span>
+              </div>
+              {finalAmt && Number(finalAmt) !== showPay.price && (
+                <div style={{fontSize:11,marginTop:5,fontWeight:600,color:Number(finalAmt)>showPay.price?RD:GR}}>
+                  기본가 대비 {Number(finalAmt)>showPay.price?"+":""}{(Number(finalAmt)-showPay.price).toLocaleString()}원
+                </div>
+              )}
+            </div>
+
             {/* ── 제품 추가 섹션 ── */}
             <div style={{marginBottom:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -2893,7 +2880,8 @@ export default function App({ session, onLogout }) {
               {/* 제품 합계 */}
               {productItems.length > 0 && (()=>{
                 const prodTotal = productItems.reduce((s,x) => s+(Number(x.price)||0), 0);
-                const svcAmt = Math.max(0, showPay.price - (showPay.depAmt||0));
+                const effectivePrice = finalAmt ? Number(finalAmt) : showPay.price;
+                const svcAmt = Math.max(0, effectivePrice - (showPay.depAmt||0));
                 const grandTotal = svcAmt + prodTotal;
                 return (
                   <div style={{borderRadius:11,border:"1px solid "+PM,overflow:"hidden",marginTop:4}}>
@@ -2984,7 +2972,8 @@ export default function App({ session, onLogout }) {
               style={{width:"100%",padding:"14px",borderRadius:14,background:(payMethod&&payMethod!=="prepaid_new")||(payMethod==="prepaid_new"&&chargeAmt&&Number(chargeAmt)>=showPay.price)?P:G3,border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>
               {!payMethod?"결제수단을 선택하세요":payMethod==="prepaid_new"&&!chargeAmt?"충전 금액을 입력하세요":payMethod==="prepaid_new"&&Number(chargeAmt)<showPay.price?"충전 금액이 부족해요":(()=>{
                 const prodTotal=productItems.reduce((s,x)=>s+(Number(x.price)||0),0);
-                const svcAmt=Math.max(0,showPay.price-(showPay.depAmt||0));
+                const effectivePrice=finalAmt?Number(finalAmt):showPay.price;
+                const svcAmt=Math.max(0,effectivePrice-(showPay.depAmt||0));
                 const total=svcAmt+prodTotal;
                 return "결제 완료 · "+total.toLocaleString()+"원";
               })()}
