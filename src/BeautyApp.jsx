@@ -969,7 +969,7 @@ function TreatmentRecordModal({ bk, onClose, onSave }) {
 }
 
 // ── 타임테이블 ────────────────────────────────────────
-function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, onCancelPay, slotUnit=30 }) {
+function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, onCancelPay, onDelete, onUpdate, slotUnit=30 }) {
   // 타임테이블은 항상 30분 단위 슬롯으로 표시
   const DISPLAY_UNIT = 30;
   const SLOT_H_DYN = 26; // 슬롯 높이 고정
@@ -989,8 +989,16 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   const [fs, setFs] = useState(null);
   useEffect(() => { setCur(date); }, [date]);
   const [selBk, setSelBk] = useState(null);
-  const [editBk, setEditBk] = useState(null); // 예약 수정용
+  const [editBk, setEditBk] = useState(null);
   const [swipeStartX, setSwipeStartX] = useState(0);
+  // 드래그 상태
+  const [dragBk, setDragBk] = useState(null);
+  const [dragTime, setDragTime] = useState(null);
+  const dragTimerRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const dragMoveRef = useRef(null);
+  const dragEndRef = useRef(null);
   const DN = ["일","월","화","수","목","금","토"];
   const vis = fs !== null ? staff.filter(s => s.id === fs) : staff;
   const dayB = BKS.filter(b => b.date === cur);
@@ -1061,8 +1069,17 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100vh"}}
-      onTouchStart={e => setSwipeStartX(e.touches[0].clientX)}
-      onTouchEnd={e => { const dx=e.changedTouches[0].clientX-swipeStartX; if(Math.abs(dx)>60){dx<0?shiftWeek(1):shiftWeek(-1);} }}>
+      onTouchStart={e => { if(!isDraggingRef.current) setSwipeStartX(e.touches[0].clientX); }}
+      onTouchEnd={e => { if(isDraggingRef.current) return; const dx=e.changedTouches[0].clientX-swipeStartX; if(Math.abs(dx)>60){dx<0?shiftWeek(1):shiftWeek(-1);} }}>
+      {/* 드래그 중 시간 표시 */}
+      {dragBk && dragTime && (
+        <div style={{position:"fixed",top:72,left:"50%",transform:"translateX(-50%)",
+          background:P,color:WH,padding:"9px 22px",borderRadius:22,
+          fontSize:15,fontWeight:800,zIndex:9999,pointerEvents:"none",
+          boxShadow:"0 6px 20px rgba(0,0,0,0.28)"}}>
+          {dragTime} 으로 이동
+        </div>
+      )}
       <div style={{background:WH,borderBottom:"1px solid "+G2,paddingTop:8,flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 12px 4px"}}>
           <span style={{fontSize:13,fontWeight:700,color:DK}}>{weekLabel}</span>
@@ -1138,24 +1155,65 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
                         const bH = minsToHeight(bk.mins) - 2;
                         const et = endTime(bk.time, bk.mins);
                         const rec = treatmentRecords?.[bk.id];
-                        // 15분 예약인 경우 슬롯 내 오프셋 계산
                         const [bh,bm] = bk.time.split(":").map(Number);
-                        const slotMin = bm % DISPLAY_UNIT; // 30분 슬롯 내 오프셋(분)
+                        const slotMin = bm % DISPLAY_UNIT;
                         const topOffset = (slotMin / DISPLAY_UNIT) * SLOT_H_DYN + 1;
+                        const isPaid = !!(paidBks?.[bk.id]);
+                        const isThisDrag = dragBk?.id === bk.id;
                         return (
-                          <div style={{
-                            position:"absolute",
-                            top:topOffset, left:2, right:2,
-                            height:Math.max(bH, 18),
-                            background:WH,
-                            border:"1.5px solid "+(rec?GR:P),
-                            borderRadius:7,
-                            padding:"2px 5px",
-                            overflow:"hidden",
-                            cursor:"pointer",
-                            boxShadow:"0 2px 8px "+P+"22",
-                            zIndex:5,
-                          }}>
+                          <div
+                            onTouchStart={e => {
+                              if(isPaid) return;
+                              dragStartYRef.current = e.touches[0].clientY;
+                              dragTimerRef.current = setTimeout(() => {
+                                isDraggingRef.current = true;
+                                setDragBk(bk);
+                                setDragTime(bk.time);
+                                const origTime = bk.time;
+                                dragMoveRef.current = ev => {
+                                  ev.preventDefault();
+                                  const dy = ev.touches[0].clientY - dragStartYRef.current;
+                                  const slots = Math.round(dy / SLOT_H_DYN);
+                                  const [oh,om] = origTime.split(":").map(Number);
+                                  const total = Math.max(9*60, Math.min(21*60, oh*60+om+slots*DISPLAY_UNIT));
+                                  const snapped = Math.floor(total/slotUnit)*slotUnit;
+                                  const nh = String(Math.floor(snapped/60)).padStart(2,"0");
+                                  const nm = String(snapped%60).padStart(2,"0");
+                                  setDragTime(nh+":"+nm);
+                                };
+                                dragEndRef.current = () => {
+                                  setDragBk(p => {
+                                    setDragTime(t => {
+                                      if(t && t !== origTime && onUpdate) onUpdate(bk, {time: t});
+                                      return null;
+                                    });
+                                    return null;
+                                  });
+                                  isDraggingRef.current = false;
+                                  document.removeEventListener('touchmove', dragMoveRef.current);
+                                  document.removeEventListener('touchend', dragEndRef.current);
+                                };
+                                document.addEventListener('touchmove', dragMoveRef.current, {passive:false});
+                                document.addEventListener('touchend', dragEndRef.current);
+                              }, 400);
+                            }}
+                            onTouchEnd={() => { clearTimeout(dragTimerRef.current); }}
+                            onTouchMove={() => { if(!isDraggingRef.current) clearTimeout(dragTimerRef.current); }}
+                            style={{
+                              position:"absolute",
+                              top:topOffset, left:2, right:2,
+                              height:Math.max(bH, 18),
+                              background:WH,
+                              border:"1.5px solid "+(rec?GR:P),
+                              borderRadius:7,
+                              padding:"2px 5px",
+                              overflow:"hidden",
+                              cursor:"grab",
+                              boxShadow: isThisDrag?"0 6px 20px "+P+"66":"0 2px 8px "+P+"22",
+                              zIndex: isThisDrag ? 20 : 5,
+                              opacity: isThisDrag ? 0.7 : 1,
+                              transform: isThisDrag ? "scale(1.03)" : "none",
+                            }}>
                             <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:1}}>
                               <Badge dep={bk.dep}/>
                               <div style={{fontSize:11,fontWeight:800,color:DK,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{bk.name}</div>
@@ -1273,6 +1331,10 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
               )}
             </div>
             <div style={{display:"flex",gap:9,marginTop:14}}>
+              {(!paidBks||!paidBks[selBk.id]) && (
+                <button onClick={() => { if(onDelete)onDelete(selBk); setSelBk(null); }}
+                  style={{padding:"11px 14px",borderRadius:13,background:"#FFF0F0",border:"1px solid "+RD,color:RD,fontSize:12,fontWeight:700,cursor:"pointer"}}>삭제</button>
+              )}
               <button onClick={() => { setEditBk({...selBk}); setSelBk(null); }}
                 style={{flex:1,padding:"11px",borderRadius:13,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:12,fontWeight:700,cursor:"pointer"}}>예약 수정</button>
               {(!paidBks||!paidBks[selBk.id]) && (
@@ -2756,7 +2818,7 @@ export default function App({ session, onLogout }) {
 
       <div>
         {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>removeBooking(b.firestoreId)}/>}
-        {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} slotUnit={slotUnit}/>}
+        {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} onDelete={b=>removeBooking(b.firestoreId)} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer}/>}
         {tab==="sales" && <SalesPage/>}
