@@ -19,7 +19,8 @@ const WH = "#FFFFFF";
 const RD = "#E05C5C";
 const GR = "#03C75A";
 
-const TODAY = "2025-06-06";
+const _todayD = new Date();
+const TODAY = _todayD.getFullYear() + "-" + String(_todayD.getMonth()+1).padStart(2,"0") + "-" + String(_todayD.getDate()).padStart(2,"0");
 const SLOT_H = 26;
 
 function fmtPhone(v) {
@@ -670,10 +671,14 @@ function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30,
     setCt("");
   }
 
+  const _bToday = new Date();
+  const _bYr = _bToday.getFullYear(), _bMo = _bToday.getMonth()+1;
+  const _bDim = new Date(_bYr, _bMo, 0).getDate();
   const calDays = [];
-  for (let i = 1; i <= 30; i++) {
-    const d = String(i).padStart(2,"0");
-    calDays.push({d:i, ds:"2025-06-"+d, we: i%7===5||i%7===6});
+  for (let i = 1; i <= _bDim; i++) {
+    const ds = _bYr+"-"+String(_bMo).padStart(2,"0")+"-"+String(i).padStart(2,"0");
+    const dow = new Date(_bYr, _bMo-1, i).getDay();
+    calDays.push({d:i, ds, we: dow===0||dow===6});
   }
 
   const timeOpts = [];
@@ -1327,8 +1332,8 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   );
 }
 function CalPage({ onDate }) {
-  const [yr, setYr] = useState(2025);
-  const [mo, setMo] = useState(6);
+  const [yr, setYr] = useState(() => new Date().getFullYear());
+  const [mo, setMo] = useState(() => new Date().getMonth() + 1);
   const DL = ["일","월","화","수","목","금","토"];
   const dim = new Date(yr,mo,0).getDate();
   const fd = new Date(yr,mo-1,1).getDay();
@@ -1713,7 +1718,7 @@ function SalesPage() {
   return (
     <div style={{padding:"12px 13px"}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:12}}>
-        {[{l:"오늘 매출",v:td.toLocaleString(),s:"6월 6일"},{l:"이번달 매출",v:total.toLocaleString(),s:"6월 전체"}].map((c,i) => (
+        {[{l:"오늘 매출",v:td.toLocaleString(),s:`${new Date().getMonth()+1}월 ${new Date().getDate()}일`},{l:"이번달 매출",v:total.toLocaleString(),s:`${new Date().getMonth()+1}월 전체`}].map((c,i) => (
           <div key={i} style={{background:WH,borderRadius:14,padding:"13px",border:"1px solid "+G2}}>
             <div style={{fontSize:10,color:G5,marginBottom:4}}>{c.l}</div>
             <div style={{fontSize:18,fontWeight:800,color:DK}}>{c.v}</div>
@@ -1752,11 +1757,14 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
   const rev = todB.reduce((s,b)=>s+b.price,0);
   const mrev = BKS.reduce((s,b)=>s+b.price,0);
 
-  const calD = Array.from({length:30},(_,i) => {
+  const _tn = new Date();
+  const _tyr = _tn.getFullYear(), _tmo = _tn.getMonth()+1, _td = _tn.getDate();
+  const _dim = new Date(_tyr, _tmo, 0).getDate();
+  const calD = Array.from({length:_dim},(_,i) => {
     const d=i+1;
-    const ds="2025-06-"+String(d).padStart(2,"0");
-    const dow=new Date("2025-06-"+String(d).padStart(2,"0")+"T00:00:00").getDay();
-    return {d,ds,isT:d===6,we:dow===0||dow===6,cnt:BKS.filter(b=>b.date===ds).length};
+    const ds=_tyr+"-"+String(_tmo).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const dow=new Date(_tyr,_tmo-1,d).getDay();
+    return {d,ds,isT:d===_td,we:dow===0||dow===6,cnt:BKS.filter(b=>b.date===ds).length};
   });
 
   const depLabel = dep => {
@@ -1798,7 +1806,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
       <div style={{padding:"12px 13px 0"}}>
         <div style={{background:WH,borderRadius:18,padding:"15px",marginBottom:12,border:"1px solid "+G2}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
-            <span style={{fontSize:15,fontWeight:800,color:DK}}>2025년 6월</span>
+            <span style={{fontSize:15,fontWeight:800,color:DK}}>{_tyr}년 {_tmo}월</span>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
             {["일","월","화","수","목","금","토"].map((d,i) => <div key={d} style={{textAlign:"center",fontSize:9,fontWeight:600,color:i===0||i===6?RD:G5}}>{d}</div>)}
@@ -1818,7 +1826,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30 }) {
         </div>
 
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <span style={{fontSize:15,fontWeight:800,color:DK}}>6월 6일 (금) · {todB.length}건</span>
+          <span style={{fontSize:15,fontWeight:800,color:DK}}>{_tmo}월 {_td}일 ({["일","월","화","수","목","금","토"][_tn.getDay()]}) · {todB.length}건</span>
         </div>
         <div style={{display:"flex",gap:6,marginBottom:10,overflowX:"auto"}}>
           {[{id:null,name:"전체"},...staff].map(s => {
@@ -2019,6 +2027,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
   // 보유고객 박스 검색 상태
   const [showCustSearch, setShowCustSearch] = useState(false);
   const [custSearchQ, setCustSearchQ] = useState("");
+  const [showBonusSetting, setShowBonusSetting] = useState(false);
 
   const filteredData = data.filter(d => d.custName.includes(searchQ));
   const filteredCusts = CUSTS.filter(c =>
@@ -2131,8 +2140,6 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
       )}
     </div>
   );
-
-  const [showBonusSetting, setShowBonusSetting] = useState(false);
 
   return (
     <div style={{minHeight:"100vh",background:BG,paddingBottom:40}}>
@@ -2562,7 +2569,7 @@ export default function App({ session, onLogout }) {
   const [tab, setTab] = useState("home");
   const [menuOpen, setMenu] = useState(false);
   const [ttDate, setTtDate] = useState(TODAY);
-  const [shopName, setShopName] = useState(session?.shopName || "Modu Beauty");
+  const [shopName, setShopName] = useState(() => localStorage.getItem("shopName") || session?.shopName || "Modu Beauty");
   const [modal, setModal] = useState(null);
   const [settingsSub, setSettingsSub] = useState(null);
   const [staff, setStaff] = useState([{id:0,name:"담당자1",bg:PS},{id:1,name:"담당자2",bg:WH}]);
@@ -2772,7 +2779,7 @@ export default function App({ session, onLogout }) {
         {tab==="customer" && <CustPage/>}
         {tab==="sales" && <SalesPage/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)}/>}
-        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>setShopName(n)}/>}
+        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}}/>}
       </div>
 
       {/* 하단 탭 */}
