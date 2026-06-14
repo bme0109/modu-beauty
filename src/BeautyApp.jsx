@@ -518,7 +518,7 @@ function SvcModal({ onSelect, onClose }) {
 }
 
 // ── 고객 팝업 ─────────────────────────────────────────
-function CustModal({ onSelect, onClose }) {
+function CustModal({ onSelect, onClose, onSaveNew }) {
   const [q, setQ] = useState("");
   const [mode, setMode] = useState("search");
   const [nc, setNc] = useState({name:"",phone:"",birth:"",memo:"",tags:[]});
@@ -543,6 +543,7 @@ function CustModal({ onSelect, onClose }) {
     if (!nc.name.trim()) return;
     const c = { id: Date.now(), ...nc, visits:0, revenue:0 };
     CUSTS = [...CUSTS, c];
+    if(onSaveNew) onSaveNew(c);
     onSelect(c);
   }
 
@@ -612,7 +613,7 @@ function CustModal({ onSelect, onClose }) {
 }
 
 // ── 예약 등록 팝업 (예약금 금액 입력 추가) ──────────────
-function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30, onSave }) {
+function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30, onSave, onSaveNewCust }) {
   const [f, setF] = useState({
     sid: initSid !== null && initSid !== undefined ? String(initSid) : "0",
     cid:"", name:"", phone:"",
@@ -852,7 +853,7 @@ function BookModal({ initTime, initSid, onClose, staff, onAddStaff, slotUnit=30,
         </div>
       </Sheet>
       {showS && <SvcModal onSelect={s => {set("svc",s.name);set("mins",String(s.mins));set("svcPrice",String(s.price));setShowS(false);}} onClose={() => setShowS(false)}/>}
-      {showC && <CustModal onSelect={c => {set("cid",String(c.id));set("name",c.name);set("phone",c.phone||"");setShowC(false);}} onClose={() => setShowC(false)}/>}
+      {showC && <CustModal onSelect={c => {set("cid",String(c.id));set("name",c.name);set("phone",c.phone||"");setShowC(false);}} onClose={() => setShowC(false)} onSaveNew={onSaveNewCust}/>}
     </>
   );
 }
@@ -986,6 +987,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   const [cur, setCur] = useState(date);
   const [fs, setFs] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  useEffect(() => { setCur(date); setWeekOffset(0); }, [date]);
   const [selBk, setSelBk] = useState(null);
   const [editBk, setEditBk] = useState(null); // 예약 수정용
   const [swipeStartX, setSwipeStartX] = useState(0);
@@ -1348,7 +1350,7 @@ function CalPage({ onDate }) {
 }
 
 // ── 고객 페이지 (수정 기능 추가) ─────────────────────
-function CustPage() {
+function CustPage({ onSaveNew }) {
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(null);
   const [showR, setShowR] = useState(false);
@@ -1663,6 +1665,7 @@ function CustPage() {
               const c = {id:Date.now(),...nc,visits:0,revenue:0};
               CUSTS = [...CUSTS,c];
               setCusts(p => [...p,c]);
+              if(onSaveNew) onSaveNew(c);
               setShowR(false);
               setNc({name:"",phone:"",memo:"",tags:[]});
             }} style={{width:"100%",padding:"13px",borderRadius:13,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>등록 완료</button>
@@ -1722,8 +1725,8 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   const [swipeTouchX, setSwipeTouchX] = useState({});
   const todB = BKS.filter(b=>b.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time));
   const fil = fs===null ? todB : todB.filter(b=>b.sid===fs);
-  const rev = Object.values(paidBks).filter(p=>p.date===TODAY).reduce((s,p)=>s+(p.paidAmt||0),0);
-  const mrev = Object.values(paidBks).filter(p=>p.date&&p.date.slice(0,7)===TODAY.slice(0,7)).reduce((s,p)=>s+(p.paidAmt||0),0);
+  const rev = Object.values(paidBks).filter(p=>p.date===TODAY).reduce((s,p)=>s+(p.amount||p.paidAmt||0),0);
+  const mrev = Object.values(paidBks).filter(p=>p.date&&p.date.slice(0,7)===TODAY.slice(0,7)).reduce((s,p)=>s+(p.amount||p.paidAmt||0),0);
 
   const _tn = new Date();
   const _tyr = _tn.getFullYear(), _tmo = _tn.getMonth()+1, _td = _tn.getDate();
@@ -1840,7 +1843,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                   </div>
                   <div style={{fontSize:10,color:G5}}>담당자{b.sid+1} · {b.svc}</div>
                 </div>
-                <span style={{fontSize:12,fontWeight:600,color:isPaid?GR:DK}}>{isPaid?(paidBks[b.id].paidAmt||0).toLocaleString():b.price.toLocaleString()}원</span>
+                <span style={{fontSize:12,fontWeight:600,color:isPaid?GR:DK}}>{isPaid?(paidBks[b.id].amount||paidBks[b.id].paidAmt||0).toLocaleString():b.price.toLocaleString()}원</span>
               </div>
             </div>
           );
@@ -1865,7 +1868,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                       <div style={{fontSize:13,fontWeight:700,color:DK}}>{b?.name||"고객"}</div>
                       <div style={{fontSize:11,color:G5}}>{p.date} · {b?.svc||""} · {p.method}</div>
                     </div>
-                    <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.paidAmt||0).toLocaleString()}원</span>
+                    <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.amount||p.paidAmt||0).toLocaleString()}원</span>
                   </div>
                 );
               })
@@ -2755,7 +2758,7 @@ export default function App({ session, onLogout }) {
         {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>removeBooking(b.firestoreId)}/>}
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
-        {tab==="customer" && <CustPage/>}
+        {tab==="customer" && <CustPage onSaveNew={saveCustomer}/>}
         {tab==="sales" && <SalesPage/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}}/>}
@@ -2812,7 +2815,7 @@ export default function App({ session, onLogout }) {
         </>
       )}
 
-      {modal && <BookModal initTime={modal.time} initSid={modal.sid} onClose={() => setModal(null)} staff={staff} onAddStaff={addStaff} slotUnit={slotUnit} onSave={addBooking}/>}
+      {modal && <BookModal initTime={modal.time} initSid={modal.sid} onClose={() => setModal(null)} staff={staff} onAddStaff={addStaff} slotUnit={slotUnit} onSave={addBooking} onSaveNewCust={saveCustomer}/>}
 
       {/* 시술 기록 팝업 */}
       {showRecord && <TreatmentRecordModal bk={showRecord} onClose={() => setShowRecord(null)} onSave={saveRecord}/>}
