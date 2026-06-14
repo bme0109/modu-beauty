@@ -1722,8 +1722,8 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   const [swipeTouchX, setSwipeTouchX] = useState({});
   const todB = BKS.filter(b=>b.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time));
   const fil = fs===null ? todB : todB.filter(b=>b.sid===fs);
-  const rev = todB.reduce((s,b)=>s+b.price,0);
-  const mrev = BKS.reduce((s,b)=>s+b.price,0);
+  const rev = Object.values(paidBks).filter(p=>p.date===TODAY).reduce((s,p)=>s+(p.paidAmt||0),0);
+  const mrev = Object.values(paidBks).filter(p=>p.date&&p.date.slice(0,7)===TODAY.slice(0,7)).reduce((s,p)=>s+(p.paidAmt||0),0);
 
   const _tn = new Date();
   const _tyr = _tn.getFullYear(), _tmo = _tn.getMonth()+1, _td = _tn.getDate();
@@ -1855,15 +1855,21 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
               <div style={{fontSize:11,color:G5,marginBottom:4}}>총 매출</div>
               <div style={{fontSize:22,fontWeight:800,color:P}}>{(showSales==="today"?rev:mrev).toLocaleString()}원</div>
             </div>
-            {(showSales==="today"?todB:BKS).map(b => (
-              <div key={b.id} style={{display:"flex",alignItems:"center",padding:"10px 14px",borderRadius:11,border:"1px solid "+G2,marginBottom:7,background:WH}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:700,color:DK}}>{b.name}</div>
-                  <div style={{fontSize:11,color:G5}}>{b.date} {b.time} · {b.svc}</div>
-                </div>
-                <span style={{fontSize:13,fontWeight:700,color:P}}>{b.price.toLocaleString()}원</span>
-              </div>
-            ))}
+            {Object.entries(paidBks)
+              .filter(([_,p])=>showSales==="today"?p.date===TODAY:p.date&&p.date.slice(0,7)===TODAY.slice(0,7))
+              .map(([bkId,p]) => {
+                const b = BKS.find(x=>String(x.id)===String(bkId)||String(x.firestoreId)===String(bkId));
+                return (
+                  <div key={bkId} style={{display:"flex",alignItems:"center",padding:"10px 14px",borderRadius:11,border:"1px solid "+G2,marginBottom:7,background:WH}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,color:DK}}>{b?.name||"고객"}</div>
+                      <div style={{fontSize:11,color:G5}}>{p.date} · {b?.svc||""} · {p.method}</div>
+                    </div>
+                    <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.paidAmt||0).toLocaleString()}원</span>
+                  </div>
+                );
+              })
+            }
           </div>
         </Sheet>
       )}
@@ -2603,7 +2609,9 @@ export default function App({ session, onLogout }) {
   const [showPay, setShowPay] = useState(null);
   const [payMethod, setPayMethod] = useState("");
   const [payMemo, setPayMemo] = useState("");
-  const [paidBks, setPaidBks] = useState({});
+  const [paidBks, setPaidBks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`paidBks_${session?.uid}`) || "{}"); } catch { return {}; }
+  });
   const [chargeAmt, setChargeAmt] = useState("");
   const [payBonus, setPayBonus] = useState("");
   const [finalAmt, setFinalAmt] = useState("");
@@ -2617,6 +2625,10 @@ export default function App({ session, onLogout }) {
   const [treatmentRecords, setTreatmentRecords] = useState({});
   // 예약 단위 (15분 or 30분)
   const [slotUnit, setSlotUnit] = useState(30);
+
+  useEffect(() => {
+    if(uid) localStorage.setItem(`paidBks_${uid}`, JSON.stringify(paidBks));
+  }, [paidBks, uid]);
 
   function openPayment(bk) { setShowPay(bk); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt(""); }
   function openRecord(bk) { setShowRecord(bk); }
