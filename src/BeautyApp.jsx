@@ -1023,6 +1023,10 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
     }
   }
 
+  function localDs(d) {
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
   function getWeekDays() {
     const base = new Date(cur+"T00:00:00");
     const sun = new Date(base);
@@ -1030,7 +1034,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
     return Array.from({length:7}, (_,i) => {
       const d = new Date(sun);
       d.setDate(sun.getDate()+i);
-      const ds = d.toISOString().slice(0,10);
+      const ds = localDs(d);
       return {dn:DN[i],dt:d.getDate(),mo:d.getMonth()+1,ds,sel:ds===cur,hasBk:BKS.some(b=>b.date===ds),isWe:i===0||i===6};
     });
   }
@@ -1040,7 +1044,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   function shiftWeek(dir) {
     const base = new Date(cur+"T00:00:00");
     base.setDate(base.getDate() + dir*7);
-    setCur(base.toISOString().slice(0,10));
+    setCur(localDs(base));
   }
 
   const depLabel = dep => {
