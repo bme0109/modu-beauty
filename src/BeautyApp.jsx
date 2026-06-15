@@ -1739,14 +1739,16 @@ function CustPage({ onSaveNew }) {
 }
 
 // ── 매출 페이지 ───────────────────────────────────────
-function SalesPage() {
-  const total = BKS.reduce((s,b)=>s+b.price,0);
-  const td = BKS.filter(b=>b.date===TODAY).reduce((s,b)=>s+b.price,0);
-  const byS = [0,1].map(id => ({
-    n:"담당자"+(id+1),
-    r:BKS.filter(b=>b.sid===id).reduce((s,b)=>s+b.price,0),
-    c:BKS.filter(b=>b.sid===id).length,
-  }));
+function SalesPage({ paidBks }) {
+  const curMonth = TODAY.slice(0,7);
+  const entries = Object.entries(paidBks||{});
+  const monthEntries = entries.filter(([,p])=>p.date&&p.date.slice(0,7)===curMonth);
+  const total = monthEntries.reduce((s,[,p])=>s+(p.amount||0),0);
+  const td = entries.filter(([,p])=>p.date===TODAY).reduce((s,[,p])=>s+(p.amount||0),0);
+  const byS = [0,1].map(id => {
+    const me = monthEntries.filter(([bkId])=>{ const b=BKS.find(x=>String(x.id)===bkId); return b&&b.sid===id; });
+    return { n:"담당자"+(id+1), r:me.reduce((s,[,p])=>s+(p.amount||0),0), c:me.length };
+  });
 
   return (
     <div style={{padding:"12px 13px"}}>
@@ -2784,6 +2786,14 @@ export default function App({ session, onLogout }) {
       if(exist){exist.balance+=bonus;exist.total+=bonus;exist.history.push({id:Date.now(),type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"});}
       else{PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,balance:bonus,total:bonus,history:[{id:1,type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]});}
     }
+    // 고객 누적매출/방문횟수 업데이트
+    const cust = CUSTS.find(c=>c.name===showPay.name);
+    if(cust) {
+      const updated = {...cust, visits:(cust.visits||0)+1, revenue:(cust.revenue||0)+price};
+      CUSTS = CUSTS.map(c=>c.id===cust.id?updated:c);
+      saveCustomer(updated);
+    }
+
     setShowPay(null); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt("");
   }
 
@@ -2843,7 +2853,7 @@ export default function App({ session, onLogout }) {
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} onDelete={b=>removeBooking(b.firestoreId)} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer}/>}
-        {tab==="sales" && <SalesPage/>}
+        {tab==="sales" && <SalesPage paidBks={paidBks}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}}/>}
       </div>
