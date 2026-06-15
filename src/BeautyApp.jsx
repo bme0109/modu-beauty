@@ -2763,15 +2763,20 @@ export default function App({ session, onLogout }) {
     }
     if(payMethod==="prepaid_new") {
       const exist=PREPAID_DATA.find(d=>d.custName===showPay.name);
-      const finalBalance=charge+bonus-price;
+      // paidAmt = 잔금(예약금 차감 후) + 제품금액 — 실제 선불권에서 차감할 금액
+      const chargeMemo=charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"");
       if(exist){
-        exist.total+=charge+bonus; exist.balance=exist.balance+charge+bonus-price;
+        exist.total+=charge+bonus;
+        exist.balance=exist.balance+charge+bonus-paidAmt;
         exist.history=[...exist.history,
-          {id:Date.now(),type:"charge",amount:charge+bonus,date:TODAY,memo:charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"")},
-          {id:Date.now()+1,type:"use",amount:price,date:TODAY,memo:showPay.svc+" 결제"}];
+          {id:Date.now(),type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},
+          {id:Date.now()+1,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}];
       } else {
-        PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,balance:finalBalance,total:charge+bonus,
-          history:[{id:1,type:"charge",amount:charge+bonus,date:TODAY,memo:charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"")},{id:2,type:"use",amount:price,date:TODAY,memo:showPay.svc+" 결제"}]});
+        PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,
+          balance:charge+bonus-paidAmt, total:charge+bonus,
+          history:[
+            {id:1,type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},
+            {id:2,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]});
       }
     }
     if(payMethod!=="prepaid"&&payMethod!=="prepaid_new"&&bonus>0) {
@@ -3050,20 +3055,24 @@ export default function App({ session, onLogout }) {
                   />
                   {chargeAmt && Number(chargeAmt)>0 && (()=>{
                     const charge=Number(chargeAmt), bonus=Number(payBonus)||0;
-                    const total=charge+bonus, price=showPay.price, remain=total-price;
+                    const ep=finalAmt?Number(finalAmt):showPay.price;
+                    const prodTot=productItems.reduce((s,x)=>s+(Number(x.price)||0),0);
+                    // 실제 선불권에서 차감할 금액 = 잔금(예약금 제외) + 제품
+                    const deduct=Math.max(0,ep-(showPay.depAmt||0))+prodTot;
+                    const total=charge+bonus, remain=total-deduct;
                     return (
                       <div style={{marginTop:8,padding:"10px 13px",borderRadius:11,background:"#E8F9EF",border:"1px solid #2E7D52",fontSize:12,color:"#2E7D52"}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                           <span>충전금액</span><span style={{fontWeight:700}}>{charge.toLocaleString()}원</span>
                         </div>
                         {bonus>0&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span>보너스</span><span style={{fontWeight:700,color:GR}}>+{bonus.toLocaleString()}원</span></div>}
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span>당일 시술</span><span style={{fontWeight:700,color:RD}}>−{price.toLocaleString()}원</span></div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span>당일 시술{(showPay.depAmt||0)>0?" (잔금)":""}</span><span style={{fontWeight:700,color:RD}}>−{deduct.toLocaleString()}원</span></div>
                         <div style={{height:1,background:"#2E7D5230",margin:"5px 0"}}/>
                         <div style={{display:"flex",justifyContent:"space-between",fontWeight:800,fontSize:13}}>
                           <span>잔여 선불권</span>
                           <span style={{color:remain<0?RD:"#2E7D52"}}>{remain.toLocaleString()}원</span>
                         </div>
-                        {remain<0&&<div style={{marginTop:5,fontSize:11,color:RD,fontWeight:600}}>충전 금액이 시술 금액보다 적어요</div>}
+                        {remain<0&&<div style={{marginTop:5,fontSize:11,color:RD,fontWeight:600}}>충전 금액이 부족해요 ({(-remain).toLocaleString()}원 더 필요)</div>}
                       </div>
                     );
                   })()}
@@ -3072,12 +3081,26 @@ export default function App({ session, onLogout }) {
             )}
 
             <button onClick={completePayment}
-              style={{width:"100%",padding:"14px",borderRadius:14,background:(payMethod&&payMethod!=="prepaid_new")||(payMethod==="prepaid_new"&&chargeAmt&&Number(chargeAmt)>=showPay.price)?P:G3,border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>
-              {!payMethod?"결제수단을 선택하세요":payMethod==="prepaid_new"&&!chargeAmt?"충전 금액을 입력하세요":payMethod==="prepaid_new"&&Number(chargeAmt)<showPay.price?"충전 금액이 부족해요":(()=>{
+              style={{width:"100%",padding:"14px",borderRadius:14,background:(()=>{
+                if(!payMethod) return G3;
+                if(payMethod==="prepaid_new"){
+                  if(!chargeAmt) return G3;
+                  const ep2=finalAmt?Number(finalAmt):showPay.price;
+                  const need=Math.max(0,ep2-(showPay.depAmt||0))+productItems.reduce((s,x)=>s+(Number(x.price)||0),0);
+                  return (Number(chargeAmt)+(Number(payBonus)||0))>=need?P:G3;
+                }
+                return P;
+              })(),border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>
+              {(()=>{
                 const prodTotal=productItems.reduce((s,x)=>s+(Number(x.price)||0),0);
                 const effectivePrice=finalAmt?Number(finalAmt):showPay.price;
                 const svcAmt=Math.max(0,effectivePrice-(showPay.depAmt||0));
                 const total=svcAmt+prodTotal;
+                if(!payMethod) return "결제수단을 선택하세요";
+                if(payMethod==="prepaid_new"){
+                  if(!chargeAmt) return "충전 금액을 입력하세요";
+                  if((Number(chargeAmt)+(Number(payBonus)||0))<total) return "충전 금액이 부족해요";
+                }
                 return "결제 완료 · "+total.toLocaleString()+"원";
               })()}
             </button>
