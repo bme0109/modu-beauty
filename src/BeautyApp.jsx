@@ -2066,10 +2066,6 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   );
 }
 let PREPAID_DATA = [];
-let _uid = null;
-function savePrepaidLocal() {
-  if(_uid) localStorage.setItem('prepaid_'+_uid, JSON.stringify(PREPAID_DATA));
-}
 function buildPrepaidFromPaidBks(paidBks) {
   const map = {};
   const entries = Object.entries(paidBks).sort((a,b)=>(a[1].date||'').localeCompare(b[1].date||''));
@@ -2095,7 +2091,8 @@ function buildPrepaidFromPaidBks(paidBks) {
   return Object.values(map).filter(r=>r.total>0||r.history.length>0);
 }
 
-function PrepaidPage({ onBack, bonusRates, onUpdateBonus, paidBks }) {
+function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaidUpdate }) {
+  const data = prepaidData || [];
   const [sel, setSel] = useState(null);
   const [showCharge, setShowCharge] = useState(false);
   const [showUse, setShowUse] = useState(false);
@@ -2103,20 +2100,6 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, paidBks }) {
   const [memo, setMemo] = useState("");
   const [chargeMethod, setChargeMethod] = useState("");
   const [bonusInput, setBonusInput] = useState("");
-  const [data, setData] = useState(() => {
-    if(PREPAID_DATA.length>0) return PREPAID_DATA;
-    if(_uid) {
-      try {
-        const saved=JSON.parse(localStorage.getItem('prepaid_'+_uid)||'[]');
-        if(saved.length>0){PREPAID_DATA=saved;return saved;}
-      } catch{}
-    }
-    if(paidBks) {
-      const built=buildPrepaidFromPaidBks(paidBks);
-      if(built.length>0){PREPAID_DATA=built;savePrepaidLocal();return built;}
-    }
-    return [];
-  });
   const [showNew, setShowNew] = useState(false);
   const [newCust, setNewCust] = useState("");
   const [newAmt, setNewAmt] = useState("");
@@ -2142,7 +2125,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, paidBks }) {
       history:[...sel.history,{id:Date.now(),type:"charge",amount:total,date:TODAY,
         memo:(memo||"충전")+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
     const nd=data.map(d=>d.custId===sel.custId?updated:d);
-    PREPAID_DATA=nd; setData(nd); setSel(updated); savePrepaidLocal();
+    onPrepaidUpdate(nd); setSel(updated);
     setAmount(""); setMemo(""); setChargeMethod(""); setBonusInput(""); setShowCharge(false);
   }
   function use() {
@@ -2151,7 +2134,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, paidBks }) {
     const updated={...sel,balance:sel.balance-amt,
       history:[...sel.history,{id:Date.now(),type:"use",amount:amt,date:TODAY,memo:memo||"사용"}]};
     const nd=data.map(d=>d.custId===sel.custId?updated:d);
-    PREPAID_DATA=nd; setData(nd); setSel(updated); savePrepaidLocal();
+    onPrepaidUpdate(nd); setSel(updated);
     setAmount(""); setMemo(""); setShowUse(false);
   }
   function addNew() {
@@ -2163,7 +2146,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, paidBks }) {
       history:[{id:1,type:"charge",amount:total,date:TODAY,
         memo:"신규 발급"+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
     const nd=[...data,n];
-    PREPAID_DATA=nd; setData(nd); savePrepaidLocal();
+    onPrepaidUpdate(nd);
     setNewCust(""); setNewAmt(""); setNewMethod(""); setNewBonus(""); setShowNew(false);
   }
 
@@ -2679,15 +2662,25 @@ export default function App({ session, onLogout }) {
   const [customers, setCustomers] = useState([]); // Firestore 고객 목록
   const [dbLoading, setDbLoading] = useState(true);
 
-  // 예약 실시간 구독
+  // 선불권 데이터 — App state로 관리 (localStorage에서 동기 초기화)
+  const [prepaidData, setPrepaidData] = useState(() => {
+    const uid0 = session?.uid;
+    if(!uid0) return [];
+    try { return JSON.parse(localStorage.getItem('prepaid_'+uid0)||'[]'); } catch { return []; }
+  });
+  // prepaidData 변경 시 localStorage + 전역 PREPAID_DATA 동기화
   useEffect(() => {
-    if(!uid) return;
-    _uid = uid;
-    try {
-      const saved = JSON.parse(localStorage.getItem('prepaid_'+uid)||'[]');
-      if(saved.length>0) PREPAID_DATA = saved;
-    } catch{}
-  }, [uid]);
+    PREPAID_DATA = prepaidData;
+    if(uid) localStorage.setItem('prepaid_'+uid, JSON.stringify(prepaidData));
+  }, [prepaidData, uid]);
+  // 최초 1회: localStorage 비어있고 paidBks에 선불권 결제 있으면 복원
+  const [prepaidBuilt, setPrepaidBuilt] = useState(false);
+  useEffect(() => {
+    if(prepaidBuilt || prepaidData.length>0 || bookings.length===0) return;
+    const built = buildPrepaidFromPaidBks(paidBks);
+    if(built.length>0) setPrepaidData(built);
+    setPrepaidBuilt(true);
+  }, [bookings]);
 
   useEffect(() => {
     if(!uid) return;
@@ -2775,9 +2768,10 @@ export default function App({ session, onLogout }) {
   function cancelPayment(bkId) {
     const p = paidBks[bkId];
     if(p && p.custName) {
-      const idx = PREPAID_DATA.findIndex(d=>d.custName===p.custName);
-      if(idx>=0) {
-        const rec = {...PREPAID_DATA[idx]};
+      setPrepaidData(prev => {
+        const idx = prev.findIndex(d=>d.custName===p.custName);
+        if(idx<0) return prev;
+        let rec = {...prev[idx]};
         if(p.method==="선불권 사용") {
           rec.balance = (rec.balance||0) + (p.paidAmt||0);
           rec.history = rec.history.filter(h=>!(h.date===p.date&&h.type==="use"&&h.amount===p.paidAmt));
@@ -2785,17 +2779,12 @@ export default function App({ session, onLogout }) {
           const charge=(p.chargeAmt||0)+(p.chargeBonus||0);
           rec.total = Math.max(0,(rec.total||0)-charge);
           rec.balance = (rec.balance||0) - charge + (p.paidAmt||0);
-          rec.history = rec.history.filter(h=>!(h.date===p.date&&((h.type==="charge"&&h.amount===charge)||(h.type==="use"&&h.amount===p.paidAmt&&h.memo==="결제"))));
+          rec.history = rec.history.filter(h=>!(h.date===p.date&&((h.type==="charge"&&h.amount===charge)||(h.type==="use"&&h.amount===(p.paidAmt||0)))));
         }
-        const nd = rec.total<=0&&rec.history.length===0
-          ? PREPAID_DATA.filter((_,i)=>i!==idx)
-          : PREPAID_DATA.map((d,i)=>i===idx?rec:d);
-        PREPAID_DATA = nd;
-        savePrepaidLocal();
-      }
-    }
-    // 고객 누적매출/방문횟수 되돌리기
-    if(p && p.custName) {
+        if(rec.total<=0 && rec.history.length===0) return prev.filter((_,i)=>i!==idx);
+        return prev.map((d,i)=>i===idx?rec:d);
+      });
+      // 고객 누적매출/방문횟수 되돌리기
       const cust = CUSTS.find(c=>c.name===p.custName);
       if(cust) {
         const updated = {...cust, visits:Math.max(0,(cust.visits||0)-1), revenue:Math.max(0,(cust.revenue||0)-(p.amount||0))};
@@ -2849,37 +2838,27 @@ export default function App({ session, onLogout }) {
       }
     }));
 
-    if(payMethod==="prepaid") {
-      const exist=PREPAID_DATA.find(d=>d.custName===showPay.name);
-      if(exist){
-        exist.balance=Math.max(0,exist.balance-paidAmt);
-        exist.history=[...exist.history,{id:Date.now(),type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}];
+    setPrepaidData(prev => {
+      let nd = [...prev];
+      const name = showPay.name;
+      const idx = nd.findIndex(d=>d.custName===name);
+      if(payMethod==="prepaid") {
+        if(idx>=0) nd[idx]={...nd[idx],balance:Math.max(0,nd[idx].balance-paidAmt),history:[...nd[idx].history,{id:Date.now(),type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]};
+      } else if(payMethod==="prepaid_new") {
+        const chargeMemo=charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"");
+        if(idx>=0) {
+          nd[idx]={...nd[idx],total:nd[idx].total+charge+bonus,balance:nd[idx].balance+charge+bonus-paidAmt,
+            history:[...nd[idx].history,{id:Date.now(),type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},{id:Date.now()+1,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]};
+        } else {
+          nd=[...nd,{custId:Date.now(),custName:name,balance:charge+bonus-paidAmt,total:charge+bonus,
+            history:[{id:1,type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},{id:2,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]}];
+        }
+      } else if(bonus>0) {
+        if(idx>=0) nd[idx]={...nd[idx],balance:nd[idx].balance+bonus,total:nd[idx].total+bonus,history:[...nd[idx].history,{id:Date.now(),type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]};
+        else nd=[...nd,{custId:Date.now(),custName:name,balance:bonus,total:bonus,history:[{id:1,type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]}];
       }
-    }
-    if(payMethod==="prepaid_new") {
-      const exist=PREPAID_DATA.find(d=>d.custName===showPay.name);
-      // paidAmt = 잔금(예약금 차감 후) + 제품금액 — 실제 선불권에서 차감할 금액
-      const chargeMemo=charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"");
-      if(exist){
-        exist.total+=charge+bonus;
-        exist.balance=exist.balance+charge+bonus-paidAmt;
-        exist.history=[...exist.history,
-          {id:Date.now(),type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},
-          {id:Date.now()+1,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}];
-      } else {
-        PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,
-          balance:charge+bonus-paidAmt, total:charge+bonus,
-          history:[
-            {id:1,type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},
-            {id:2,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]});
-      }
-    }
-    if(payMethod!=="prepaid"&&payMethod!=="prepaid_new"&&bonus>0) {
-      const exist=PREPAID_DATA.find(d=>d.custName===showPay.name);
-      if(exist){exist.balance+=bonus;exist.total+=bonus;exist.history.push({id:Date.now(),type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"});}
-      else{PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,balance:bonus,total:bonus,history:[{id:1,type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]});}
-    }
-    savePrepaidLocal();
+      return nd;
+    });
     // 고객 누적매출/방문횟수 업데이트
     const cust = CUSTS.find(c=>c.name===showPay.name);
     if(cust) {
@@ -2948,7 +2927,7 @@ export default function App({ session, onLogout }) {
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks}/>}
-        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} paidBks={paidBks}/>}
+        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}}/>}
       </div>
 
