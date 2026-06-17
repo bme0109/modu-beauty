@@ -1746,29 +1746,65 @@ function CustPage({ onSaveNew, paidBks }) {
 
 // ── 매출 페이지 ───────────────────────────────────────
 function SalesPage({ paidBks }) {
+  const [showDetail, setShowDetail] = useState(null); // "today" | "month"
   const curMonth = TODAY.slice(0,7);
-  const entries = Object.entries(paidBks||{});
-  const monthEntries = entries.filter(([,p])=>p.date&&p.date.slice(0,7)===curMonth);
+  const allEntries = Object.entries(paidBks||{});
+  const todayEntries = allEntries.filter(([,p])=>p.date===TODAY);
+  const monthEntries = allEntries.filter(([,p])=>p.date&&p.date.slice(0,7)===curMonth);
   const total = monthEntries.reduce((s,[,p])=>s+(p.amount||0),0);
-  const td = entries.filter(([,p])=>p.date===TODAY).reduce((s,[,p])=>s+(p.amount||0),0);
+  const td = todayEntries.reduce((s,[,p])=>s+(p.amount||0),0);
   const byS = [0,1].map(id => {
     const me = monthEntries.filter(([bkId])=>{ const b=BKS.find(x=>String(x.id)===bkId); return b&&b.sid===id; });
     return { n:"담당자"+(id+1), r:me.reduce((s,[,p])=>s+(p.amount||0),0), c:me.length };
   });
 
+  // 상세 시트용 데이터 계산
+  function getDetail(entries) {
+    const totalAmt = entries.reduce((s,[,p])=>s+(p.amount||0),0);
+    // 결제수단별
+    const methodMap = {};
+    entries.forEach(([,p])=>{
+      const m = p.method&&p.method.includes("선불권 충전")?"선불권 충전":p.method||"기타";
+      if(!methodMap[m]) methodMap[m]={r:0,c:0};
+      methodMap[m].r+=(p.amount||0); methodMap[m].c+=1;
+    });
+    const byMethod = Object.entries(methodMap).sort((a,b)=>b[1].r-a[1].r);
+    // 담당자별
+    const staffMap = {};
+    entries.forEach(([bkId,p])=>{
+      const b=BKS.find(x=>String(x.id)===bkId);
+      const sn = b?"담당자"+(b.sid+1):(p.custName?"":"-");
+      if(!staffMap[sn]) staffMap[sn]={r:0,c:0};
+      staffMap[sn].r+=(p.amount||0); staffMap[sn].c+=1;
+    });
+    const byStaff = Object.entries(staffMap).sort((a,b)=>b[1].r-a[1].r);
+    // 건별 내역
+    const list = entries.map(([bkId,p])=>{
+      const b=BKS.find(x=>String(x.id)===bkId);
+      return {bkId,name:p.custName||b?.name||"-",svc:b?.svc||"-",time:b?.time||"",date:p.date,method:p.method,amount:p.amount||0};
+    }).sort((a,b)=>a.date===b.date?a.time.localeCompare(b.time):b.date.localeCompare(a.date));
+    return {totalAmt,byMethod,byStaff,list};
+  }
+
+  const det = showDetail ? getDetail(showDetail==="today"?todayEntries:monthEntries) : null;
+
   return (
     <div style={{padding:"12px 13px"}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:12}}>
-        {[{l:"오늘 매출",v:td.toLocaleString(),s:`${new Date().getMonth()+1}월 ${new Date().getDate()}일`},{l:"이번달 매출",v:total.toLocaleString(),s:`${new Date().getMonth()+1}월 전체`}].map((c,i) => (
-          <div key={i} style={{background:WH,borderRadius:14,padding:"13px",border:"1px solid "+G2}}>
-            <div style={{fontSize:10,color:G5,marginBottom:4}}>{c.l}</div>
+        {[
+          {l:"오늘 매출",v:td.toLocaleString(),s:`${new Date().getMonth()+1}월 ${new Date().getDate()}일`,key:"today"},
+          {l:"이번달 매출",v:total.toLocaleString(),s:`${new Date().getMonth()+1}월 전체`,key:"month"},
+        ].map(c => (
+          <div key={c.key} onClick={()=>setShowDetail(c.key)}
+            style={{background:WH,borderRadius:14,padding:"13px",border:"1px solid "+G2,cursor:"pointer"}}>
+            <div style={{fontSize:10,color:G5,marginBottom:4}}>{c.l} ›</div>
             <div style={{fontSize:18,fontWeight:800,color:DK}}>{c.v}</div>
             <div style={{fontSize:9,color:G5,marginTop:2}}>{c.s}</div>
           </div>
         ))}
       </div>
       <div style={{background:WH,borderRadius:14,padding:"13px",border:"1px solid "+G2,marginBottom:10}}>
-        <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:10}}>담당자별 매출</div>
+        <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:10}}>담당자별 매출 <span style={{fontSize:10,color:G5,fontWeight:400}}>이번달</span></div>
         {byS.map((s,i) => (
           <div key={i} style={{marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
@@ -1781,6 +1817,76 @@ function SalesPage({ paidBks }) {
           </div>
         ))}
       </div>
+
+      {/* 매출 상세 시트 */}
+      {showDetail && det && (
+        <Sheet onClose={()=>setShowDetail(null)} maxH="88vh">
+          <SheetHandle title={showDetail==="today"?"오늘 매출 상세":"이번달 매출 상세"} onClose={()=>setShowDetail(null)}/>
+          <div style={{flex:1,overflowY:"auto",padding:"0 16px 40px"}}>
+            {/* 총 매출 */}
+            <div style={{background:P,borderRadius:16,padding:"18px 20px",marginBottom:16,color:WH}}>
+              <div style={{fontSize:11,opacity:0.8,marginBottom:6}}>{showDetail==="today"?`${new Date().getMonth()+1}월 ${new Date().getDate()}일`:`${new Date().getMonth()+1}월 전체`} · {det.list.length}건</div>
+              <div style={{fontSize:26,fontWeight:800}}>{det.totalAmt.toLocaleString()}원</div>
+            </div>
+
+            {/* 결제수단별 */}
+            <div style={{background:WH,borderRadius:14,padding:"14px",border:"1px solid "+G2,marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:10}}>결제수단별</div>
+              {det.byMethod.length===0
+                ? <div style={{fontSize:12,color:G5,textAlign:"center",padding:"8px 0"}}>내역 없음</div>
+                : det.byMethod.map(([m,v])=>(
+                  <div key={m} style={{marginBottom:9}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                      <span style={{fontSize:12,color:DK}}>{m}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:P}}>{v.r.toLocaleString()}원 ({v.c}건)</span>
+                    </div>
+                    <div style={{height:4,background:G2,borderRadius:2}}>
+                      <div style={{width:det.totalAmt>0?(v.r/det.totalAmt*100).toFixed(0)+"%":"0%",height:"100%",background:P,borderRadius:2}}/>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* 담당자별 */}
+            <div style={{background:WH,borderRadius:14,padding:"14px",border:"1px solid "+G2,marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:10}}>담당자별</div>
+              {det.byStaff.map(([sn,v])=>(
+                <div key={sn} style={{marginBottom:9}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:12,color:DK}}>{sn}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:P}}>{v.r.toLocaleString()}원 ({v.c}건)</span>
+                  </div>
+                  <div style={{height:4,background:G2,borderRadius:2}}>
+                    <div style={{width:det.totalAmt>0?(v.r/det.totalAmt*100).toFixed(0)+"%":"0%",height:"100%",background:P,borderRadius:2}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 건별 내역 */}
+            <div style={{background:WH,borderRadius:14,padding:"14px",border:"1px solid "+G2}}>
+              <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:10}}>결제 내역</div>
+              {det.list.length===0
+                ? <div style={{fontSize:12,color:G5,textAlign:"center",padding:"8px 0"}}>내역 없음</div>
+                : det.list.map(item=>(
+                  <div key={item.bkId} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:"1px solid "+G2}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+                        <span style={{fontSize:13,fontWeight:700,color:DK}}>{item.name}</span>
+                        {item.time&&<span style={{fontSize:11,color:G5}}>{item.time}</span>}
+                      </div>
+                      <div style={{fontSize:11,color:G5}}>{item.svc} · {item.method}</div>
+                      {showDetail==="month"&&<div style={{fontSize:10,color:G5,marginTop:1}}>{item.date}</div>}
+                    </div>
+                    <span style={{fontSize:13,fontWeight:700,color:P}}>{item.amount.toLocaleString()}원</span>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }
