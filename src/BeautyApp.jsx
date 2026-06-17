@@ -1263,49 +1263,41 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
             ))}
 
             {/* 시술금액 + 예약금 + 잔금 통합 블록 */}
-            <div style={{margin:"8px 0",borderRadius:12,border:"1px solid "+G2,overflow:"hidden"}}>
-              {/* 시술 금액 */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid "+G2}}>
-                <span style={{fontSize:12,color:G5}}>시술 금액</span>
-                <span style={{fontSize:14,fontWeight:700,color:DK}}>{selBk.price.toLocaleString()}원</span>
-              </div>
-              {/* 예약금 수단 + 금액 */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid "+G2,background:PS}}>
-                <div>
-                  <span style={{fontSize:12,color:G5}}>예약금 </span>
-                  <span style={{fontSize:12,fontWeight:600,color:selBk.dep==="unpaid"?RD:P}}>
-                    {depLabel(selBk.dep)}
-                  </span>
+            {(()=>{
+              const paid=paidBks&&paidBks[selBk.id];
+              const svcAmt=paid?paid.amount:selBk.price;
+              const depA=selBk.depAmt||0;
+              return (
+                <div style={{margin:"8px 0",borderRadius:12,border:"1px solid "+G2,overflow:"hidden"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid "+G2}}>
+                    <span style={{fontSize:12,color:G5}}>시술 금액</span>
+                    <span style={{fontSize:14,fontWeight:700,color:DK}}>{svcAmt.toLocaleString()}원</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid "+G2,background:PS}}>
+                    <div>
+                      <span style={{fontSize:12,color:G5}}>예약금 </span>
+                      <span style={{fontSize:12,fontWeight:600,color:selBk.dep==="unpaid"?RD:P}}>{depLabel(selBk.dep)}</span>
+                    </div>
+                    {depA>0
+                      ?<span style={{fontSize:13,fontWeight:700,color:GR}}>−{depA.toLocaleString()}원</span>
+                      :<span style={{fontSize:12,color:selBk.dep==="unpaid"?RD:G5}}>{selBk.dep==="unpaid"?"미납입":"금액 미기재"}</span>
+                    }
+                  </div>
+                  {depA>0&&(
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:PL}}>
+                      <span style={{fontSize:13,fontWeight:700,color:DK}}>잔금 (오늘 결제)</span>
+                      <span style={{fontSize:16,fontWeight:800,color:P}}>{Math.max(0,svcAmt-depA).toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {(!depA||depA===0)&&selBk.dep!=="unpaid"&&(
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:PL}}>
+                      <span style={{fontSize:13,fontWeight:700,color:DK}}>결제 금액</span>
+                      <span style={{fontSize:16,fontWeight:800,color:P}}>{svcAmt.toLocaleString()}원</span>
+                    </div>
+                  )}
                 </div>
-                {(selBk.depAmt > 0) ? (
-                  <span style={{fontSize:13,fontWeight:700,color:GR}}>
-                    −{selBk.depAmt.toLocaleString()}원
-                  </span>
-                ) : (
-                  <span style={{fontSize:12,color:selBk.dep==="unpaid"?RD:G5}}>
-                    {selBk.dep==="unpaid"?"미납입":"금액 미기재"}
-                  </span>
-                )}
-              </div>
-              {/* 잔금 (예약금이 있을 때만) */}
-              {selBk.depAmt > 0 && (
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:PL}}>
-                  <span style={{fontSize:13,fontWeight:700,color:DK}}>잔금 (오늘 결제)</span>
-                  <span style={{fontSize:16,fontWeight:800,color:P}}>
-                    {Math.max(0, selBk.price - selBk.depAmt).toLocaleString()}원
-                  </span>
-                </div>
-              )}
-              {/* 예약금 없으면 전액 */}
-              {(!selBk.depAmt || selBk.depAmt === 0) && selBk.dep !== "unpaid" && (
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:PL}}>
-                  <span style={{fontSize:13,fontWeight:700,color:DK}}>결제 금액</span>
-                  <span style={{fontSize:16,fontWeight:800,color:P}}>
-                    {selBk.price.toLocaleString()}원
-                  </span>
-                </div>
-              )}
-            </div>
+              );
+            })()}
             {/* 결제 상태 */}
             <div style={{display:"flex",padding:"11px 0",borderBottom:"1px solid "+G2,alignItems:"center"}}>
               <span style={{fontSize:12,color:G5,width:70,flexShrink:0}}>결제</span>
@@ -1974,28 +1966,33 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
               </div>
             ))}
             {/* 금액 블록 */}
-            <div style={{margin:"8px 0 12px",borderRadius:12,border:"1px solid "+G2,overflow:"hidden"}}>
-              <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+G2}}>
-                <span style={{fontSize:12,color:G5}}>시술 금액</span>
-                <span style={{fontSize:14,fontWeight:700,color:DK}}>{showBk.price.toLocaleString()}원</span>
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid "+G2,background:PS}}>
-                <div>
-                  <span style={{fontSize:12,color:G5}}>예약금 </span>
-                  <span style={{fontSize:12,fontWeight:600,color:showBk.dep==="unpaid"?RD:P}}>{depLabel(showBk.dep)}</span>
+            {(()=>{
+              const paid=paidBks[showBk.id];
+              const svcAmt=paid?paid.amount:showBk.price;
+              const depA=showBk.depAmt||0;
+              return (
+                <div style={{margin:"8px 0 12px",borderRadius:12,border:"1px solid "+G2,overflow:"hidden"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+G2}}>
+                    <span style={{fontSize:12,color:G5}}>시술 금액</span>
+                    <span style={{fontSize:14,fontWeight:700,color:DK}}>{svcAmt.toLocaleString()}원</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid "+G2,background:PS}}>
+                    <div>
+                      <span style={{fontSize:12,color:G5}}>예약금 </span>
+                      <span style={{fontSize:12,fontWeight:600,color:showBk.dep==="unpaid"?RD:P}}>{depLabel(showBk.dep)}</span>
+                    </div>
+                    {depA>0
+                      ?<span style={{fontSize:13,fontWeight:700,color:GR}}>−{depA.toLocaleString()}원</span>
+                      :<span style={{fontSize:12,color:G5}}>{showBk.dep==="unpaid"?"미납입":"금액 미기재"}</span>
+                    }
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:PL}}>
+                    <span style={{fontSize:13,fontWeight:700,color:DK}}>{depA>0?"잔금 (오늘 결제)":"결제 금액"}</span>
+                    <span style={{fontSize:16,fontWeight:800,color:P}}>{Math.max(0,svcAmt-depA).toLocaleString()}원</span>
+                  </div>
                 </div>
-                {showBk.depAmt > 0
-                  ? <span style={{fontSize:13,fontWeight:700,color:GR}}>−{showBk.depAmt.toLocaleString()}원</span>
-                  : <span style={{fontSize:12,color:G5}}>{showBk.dep==="unpaid"?"미납입":"금액 미기재"}</span>
-                }
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",background:PL}}>
-                <span style={{fontSize:13,fontWeight:700,color:DK}}>{showBk.depAmt>0?"잔금 (오늘 결제)":"결제 금액"}</span>
-                <span style={{fontSize:16,fontWeight:800,color:P}}>
-                  {Math.max(0, showBk.price - (showBk.depAmt||0)).toLocaleString()}원
-                </span>
-              </div>
-            </div>
+              );
+            })()}
             {/* 결제 상태 */}
             <div style={{display:"flex",padding:"11px 0",borderBottom:"1px solid "+G2,alignItems:"center"}}>
               <span style={{fontSize:12,color:G5,width:70,flexShrink:0}}>결제상태</span>
