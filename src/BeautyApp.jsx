@@ -1404,7 +1404,7 @@ function CalPage({ onDate }) {
 }
 
 // ── 고객 페이지 (수정 기능 추가) ─────────────────────
-function CustPage({ onSaveNew, paidBks }) {
+function CustPage({ onSaveNew, paidBks, prepaidData }) {
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(null);
   const [showR, setShowR] = useState(false);
@@ -1508,7 +1508,11 @@ function CustPage({ onSaveNew, paidBks }) {
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:9}}>
-              {[{l:"방문횟수",v:sel.visits+"회"},{l:"누적매출",v:(sel.revenue/10000).toFixed(0)+"만원"},{l:"선불권",v:"0원"}].map((s,i) => (
+              {(()=>{
+                const prepaidRec=(prepaidData||[]).find(d=>d.custName===sel.name);
+                const prepaidBal=prepaidRec?(prepaidRec.balance||0):0;
+                return [{l:"방문횟수",v:sel.visits+"회"},{l:"누적매출",v:(sel.revenue/10000).toFixed(0)+"만원"},{l:"선불권",v:prepaidBal.toLocaleString()+"원"}];
+              })().map((s,i) => (
                 <div key={i} style={{background:PS,borderRadius:10,padding:"8px",textAlign:"center"}}>
                   <div style={{fontSize:9,color:G5,marginBottom:3}}>{s.l}</div>
                   <div style={{fontSize:12,fontWeight:800,color:DK}}>{s.v}</div>
@@ -3047,7 +3051,7 @@ export default function App({ session, onLogout }) {
         {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>removeBooking(b.firestoreId)}/>}
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} onDelete={b=>removeBooking(b.firestoreId)} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
-        {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks}/>}
+        {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}}/>}
