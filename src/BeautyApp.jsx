@@ -1529,13 +1529,29 @@ function CustPage({ onSaveNew, paidBks }) {
             <div key={b.id}
               onClick={() => setSelVisit(b)}
               style={{background:WH,borderRadius:11,padding:"11px 13px",marginBottom:6,border:"1px solid "+G2,cursor:"pointer"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                <span style={{fontSize:12,fontWeight:700,color:DK}}>{b.date}</span>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:12,fontWeight:700,color:P}}>{(paidBks&&paidBks[b.id]?paidBks[b.id].amount:b.price).toLocaleString()}원</span>
-                  <span style={{fontSize:11,color:G5}}>›</span>
-                </div>
-              </div>
+              {(()=>{
+                const paid=paidBks&&paidBks[b.id];
+                const hasDeposit=(b.depAmt||0)>0;
+                const amtLabel = paid
+                  ? (paidBks[b.id].amount||0).toLocaleString()+"원"
+                  : hasDeposit
+                    ? (b.depAmt||0).toLocaleString()+"원"
+                    : b.price.toLocaleString()+"원";
+                const amtColor = paid ? GR : G5;
+                const badge = paid ? null : hasDeposit
+                  ? {label:"잔금 대기",bg:"#FFF3E0",color:"#E65100"}
+                  : {label:"미결제",bg:"#F5F5F5",color:G5};
+                return (
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                    <span style={{fontSize:12,fontWeight:700,color:DK}}>{b.date}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      {badge&&<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:8,background:badge.bg,color:badge.color}}>{badge.label}</span>}
+                      <span style={{fontSize:12,fontWeight:700,color:amtColor}}>{amtLabel}</span>
+                      <span style={{fontSize:11,color:G5}}>›</span>
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{fontSize:11,color:G5}}>담당자{b.sid+1} · {b.svc}</div>
               {b.photos&&b.photos.length>0 && (
                 <div style={{display:"flex",gap:5,marginTop:6}}>
