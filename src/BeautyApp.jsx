@@ -2063,8 +2063,32 @@ let _uid = null;
 function savePrepaidLocal() {
   if(_uid) localStorage.setItem('prepaid_'+_uid, JSON.stringify(PREPAID_DATA));
 }
+function buildPrepaidFromPaidBks(paidBks) {
+  const map = {};
+  const entries = Object.entries(paidBks).sort((a,b)=>(a[1].date||'').localeCompare(b[1].date||''));
+  entries.forEach(([bkId, p]) => {
+    if(!p.method) return;
+    const custName = p.custName || BKS.find(b=>String(b.id)===String(bkId))?.name;
+    if(!custName) return;
+    if(!map[custName]) map[custName]={custId:Number(bkId),custName,balance:0,total:0,history:[]};
+    const rec=map[custName];
+    if(p.method.includes("선불권 충전")) {
+      const charge = p.chargeAmt || (() => { const m=p.method.match(/선불권 충전 ([\d,]+)원/); return m?Number(m[1].replace(/,/g,'')):0; })();
+      const cb = p.chargeBonus||0;
+      const total=charge+cb, deduct=p.paidAmt||0;
+      rec.total+=total; rec.balance+=total-deduct;
+      if(total>0) rec.history.push({id:Date.now()+Math.random(),type:"charge",amount:total,date:p.date,memo:charge.toLocaleString()+"원 충전"+(cb>0?" (+보너스 "+cb.toLocaleString()+"원)":"")});
+      if(deduct>0) rec.history.push({id:Date.now()+Math.random(),type:"use",amount:deduct,date:p.date,memo:"결제"});
+    } else if(p.method==="선불권 사용") {
+      const deduct=p.paidAmt||0;
+      rec.balance-=deduct;
+      rec.history.push({id:Date.now()+Math.random(),type:"use",amount:deduct,date:p.date,memo:"결제"});
+    }
+  });
+  return Object.values(map).filter(r=>r.total>0||r.history.length>0);
+}
 
-function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
+function PrepaidPage({ onBack, bonusRates, onUpdateBonus, paidBks }) {
   const [sel, setSel] = useState(null);
   const [showCharge, setShowCharge] = useState(false);
   const [showUse, setShowUse] = useState(false);
@@ -2072,7 +2096,20 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
   const [memo, setMemo] = useState("");
   const [chargeMethod, setChargeMethod] = useState("");
   const [bonusInput, setBonusInput] = useState("");
-  const [data, setData] = useState(PREPAID_DATA);
+  const [data, setData] = useState(() => {
+    if(PREPAID_DATA.length>0) return PREPAID_DATA;
+    if(_uid) {
+      try {
+        const saved=JSON.parse(localStorage.getItem('prepaid_'+_uid)||'[]');
+        if(saved.length>0){PREPAID_DATA=saved;return saved;}
+      } catch{}
+    }
+    if(paidBks) {
+      const built=buildPrepaidFromPaidBks(paidBks);
+      if(built.length>0){PREPAID_DATA=built;savePrepaidLocal();return built;}
+    }
+    return [];
+  });
   const [showNew, setShowNew] = useState(false);
   const [newCust, setNewCust] = useState("");
   const [newAmt, setNewAmt] = useState("");
@@ -2747,7 +2784,7 @@ export default function App({ session, onLogout }) {
     const paidAmt = Math.max(0, price - depAmt) + prodTotal;
     const charge = Number(chargeAmt)||0;
     const rate = bonusRates[payMethod]||0;
-    const bonus = Math.round(paidAmt * rate / 100);
+    const bonus = payMethod==="prepaid_new" ? (Number(payBonus)||0) : Math.round(paidAmt * rate / 100);
     const methodLabel =
       payMethod==="naverpay"   ? "N페이"  :
       payMethod==="card"       ? "카드"    :
@@ -2770,6 +2807,8 @@ export default function App({ session, onLogout }) {
         prodMemo,
         bonus,
         date: TODAY,
+        custName: showPay.name,
+        ...(payMethod==="prepaid_new" ? {chargeAmt: charge, chargeBonus: bonus} : {}),
       }
     }));
 
@@ -2872,7 +2911,7 @@ export default function App({ session, onLogout }) {
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks}/>}
-        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)}/>}
+        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} paidBks={paidBks}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}}/>}
       </div>
 
