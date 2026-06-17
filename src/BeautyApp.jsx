@@ -1612,6 +1612,13 @@ function CustPage({ onSaveNew, paidBks }) {
                 </span>
               </div>
             )}
+            {/* 결제 수단 */}
+            {paidBks&&paidBks[selVisit.id] && (
+              <div style={{display:"flex",padding:"11px 0",borderBottom:"1px solid "+G2}}>
+                <span style={{fontSize:12,color:G5,width:70,flexShrink:0}}>결제 수단</span>
+                <span style={{fontSize:13,fontWeight:700,color:GR}}>{paidBks[selVisit.id].method}</span>
+              </div>
+            )}
 
             {/* 시술 메모 */}
             {selVisit.treatmentNotes && (
@@ -2766,7 +2773,37 @@ export default function App({ session, onLogout }) {
     setConfirmCancel({ id: bkId, name: bkName });
   }
   function cancelPayment(bkId) {
-    setPaidBks(p => { const n={...p}; delete n[bkId]; return n; });
+    const p = paidBks[bkId];
+    if(p && p.custName) {
+      const idx = PREPAID_DATA.findIndex(d=>d.custName===p.custName);
+      if(idx>=0) {
+        const rec = {...PREPAID_DATA[idx]};
+        if(p.method==="선불권 사용") {
+          rec.balance = (rec.balance||0) + (p.paidAmt||0);
+          rec.history = rec.history.filter(h=>!(h.date===p.date&&h.type==="use"&&h.amount===p.paidAmt));
+        } else if(p.method&&p.method.includes("선불권 충전")) {
+          const charge=(p.chargeAmt||0)+(p.chargeBonus||0);
+          rec.total = Math.max(0,(rec.total||0)-charge);
+          rec.balance = (rec.balance||0) - charge + (p.paidAmt||0);
+          rec.history = rec.history.filter(h=>!(h.date===p.date&&((h.type==="charge"&&h.amount===charge)||(h.type==="use"&&h.amount===p.paidAmt&&h.memo==="결제"))));
+        }
+        const nd = rec.total<=0&&rec.history.length===0
+          ? PREPAID_DATA.filter((_,i)=>i!==idx)
+          : PREPAID_DATA.map((d,i)=>i===idx?rec:d);
+        PREPAID_DATA = nd;
+        savePrepaidLocal();
+      }
+    }
+    // 고객 누적매출/방문횟수 되돌리기
+    if(p && p.custName) {
+      const cust = CUSTS.find(c=>c.name===p.custName);
+      if(cust) {
+        const updated = {...cust, visits:Math.max(0,(cust.visits||0)-1), revenue:Math.max(0,(cust.revenue||0)-(p.amount||0))};
+        CUSTS = CUSTS.map(c=>c.id===cust.id?updated:c);
+        saveCustomer(updated);
+      }
+    }
+    setPaidBks(prev => { const n={...prev}; delete n[bkId]; return n; });
     setConfirmCancel(null);
   }
   function saveRecord(updated) {
