@@ -1404,7 +1404,7 @@ function CalPage({ onDate }) {
 }
 
 // ── 고객 페이지 (수정 기능 추가) ─────────────────────
-function CustPage({ onSaveNew }) {
+function CustPage({ onSaveNew, paidBks }) {
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(null);
   const [showR, setShowR] = useState(false);
@@ -1532,7 +1532,7 @@ function CustPage({ onSaveNew }) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
                 <span style={{fontSize:12,fontWeight:700,color:DK}}>{b.date}</span>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:12,fontWeight:700,color:P}}>{b.price.toLocaleString()}원</span>
+                  <span style={{fontSize:12,fontWeight:700,color:P}}>{(paidBks&&paidBks[b.id]?paidBks[b.id].amount:b.price).toLocaleString()}원</span>
                   <span style={{fontSize:11,color:G5}}>›</span>
                 </div>
               </div>
@@ -1561,7 +1561,7 @@ function CustPage({ onSaveNew }) {
                 <div style={{fontSize:14,fontWeight:800,color:DK}}>{sel.name}</div>
                 <div style={{fontSize:11,color:G5,marginTop:2}}>{selVisit.date}</div>
               </div>
-              <div style={{fontSize:16,fontWeight:800,color:P}}>{selVisit.price.toLocaleString()}원</div>
+              <div style={{fontSize:16,fontWeight:800,color:P}}>{(paidBks&&paidBks[selVisit.id]?paidBks[selVisit.id].amount:selVisit.price).toLocaleString()}원</div>
             </div>
 
             {/* 시술 정보 */}
@@ -1579,22 +1579,29 @@ function CustPage({ onSaveNew }) {
             ))}
 
             {/* 금액 블록 */}
-            <div style={{margin:"8px 0",borderRadius:12,border:"1px solid "+G2,overflow:"hidden"}}>
-              <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+G2}}>
-                <span style={{fontSize:12,color:G5}}>시술 금액</span>
-                <span style={{fontSize:14,fontWeight:700,color:DK}}>{selVisit.price.toLocaleString()}원</span>
-              </div>
-              {selVisit.depAmt > 0 && (
-                <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+G2,background:PS}}>
-                  <span style={{fontSize:12,color:G5}}>예약금</span>
-                  <span style={{fontSize:13,fontWeight:700,color:GR}}>−{selVisit.depAmt.toLocaleString()}원</span>
+            {(()=>{
+              const paid=paidBks&&paidBks[selVisit.id];
+              const svcAmt=paid?paid.amount:selVisit.price;
+              const depA=selVisit.depAmt||0;
+              return (
+                <div style={{margin:"8px 0",borderRadius:12,border:"1px solid "+G2,overflow:"hidden"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+G2}}>
+                    <span style={{fontSize:12,color:G5}}>시술 금액</span>
+                    <span style={{fontSize:14,fontWeight:700,color:DK}}>{svcAmt.toLocaleString()}원</span>
+                  </div>
+                  {depA>0&&(
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+G2,background:PS}}>
+                      <span style={{fontSize:12,color:G5}}>예약금</span>
+                      <span style={{fontSize:13,fontWeight:700,color:GR}}>−{depA.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",background:PL}}>
+                    <span style={{fontSize:13,fontWeight:700,color:DK}}>{depA>0?"잔금":"결제금액"}</span>
+                    <span style={{fontSize:15,fontWeight:800,color:P}}>{Math.max(0,svcAmt-depA).toLocaleString()}원</span>
+                  </div>
                 </div>
-              )}
-              <div style={{display:"flex",justifyContent:"space-between",padding:"11px 14px",background:PL}}>
-                <span style={{fontSize:13,fontWeight:700,color:DK}}>{selVisit.depAmt>0?"잔금":"결제금액"}</span>
-                <span style={{fontSize:15,fontWeight:800,color:P}}>{Math.max(0,selVisit.price-(selVisit.depAmt||0)).toLocaleString()}원</span>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* 예약금 수단 */}
             {selVisit.dep && selVisit.dep !== "unpaid" && (
@@ -2052,6 +2059,10 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   );
 }
 let PREPAID_DATA = [];
+let _uid = null;
+function savePrepaidLocal() {
+  if(_uid) localStorage.setItem('prepaid_'+_uid, JSON.stringify(PREPAID_DATA));
+}
 
 function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
   const [sel, setSel] = useState(null);
@@ -2087,7 +2098,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
       history:[...sel.history,{id:Date.now(),type:"charge",amount:total,date:TODAY,
         memo:(memo||"충전")+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
     const nd=data.map(d=>d.custId===sel.custId?updated:d);
-    PREPAID_DATA=nd; setData(nd); setSel(updated);
+    PREPAID_DATA=nd; setData(nd); setSel(updated); savePrepaidLocal();
     setAmount(""); setMemo(""); setChargeMethod(""); setBonusInput(""); setShowCharge(false);
   }
   function use() {
@@ -2096,7 +2107,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
     const updated={...sel,balance:sel.balance-amt,
       history:[...sel.history,{id:Date.now(),type:"use",amount:amt,date:TODAY,memo:memo||"사용"}]};
     const nd=data.map(d=>d.custId===sel.custId?updated:d);
-    PREPAID_DATA=nd; setData(nd); setSel(updated);
+    PREPAID_DATA=nd; setData(nd); setSel(updated); savePrepaidLocal();
     setAmount(""); setMemo(""); setShowUse(false);
   }
   function addNew() {
@@ -2108,7 +2119,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus }) {
       history:[{id:1,type:"charge",amount:total,date:TODAY,
         memo:"신규 발급"+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
     const nd=[...data,n];
-    PREPAID_DATA=nd; setData(nd);
+    PREPAID_DATA=nd; setData(nd); savePrepaidLocal();
     setNewCust(""); setNewAmt(""); setNewMethod(""); setNewBonus(""); setShowNew(false);
   }
 
@@ -2627,6 +2638,15 @@ export default function App({ session, onLogout }) {
   // 예약 실시간 구독
   useEffect(() => {
     if(!uid) return;
+    _uid = uid;
+    try {
+      const saved = JSON.parse(localStorage.getItem('prepaid_'+uid)||'[]');
+      if(saved.length>0) PREPAID_DATA = saved;
+    } catch{}
+  }, [uid]);
+
+  useEffect(() => {
+    if(!uid) return;
     const q = query(col("bookings"), orderBy("date","asc"));
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(d => ({...d.data(), firestoreId: d.id}));
@@ -2783,6 +2803,7 @@ export default function App({ session, onLogout }) {
       if(exist){exist.balance+=bonus;exist.total+=bonus;exist.history.push({id:Date.now(),type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"});}
       else{PREPAID_DATA.push({custId:Date.now(),custName:showPay.name,balance:bonus,total:bonus,history:[{id:1,type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]});}
     }
+    savePrepaidLocal();
     // 고객 누적매출/방문횟수 업데이트
     const cust = CUSTS.find(c=>c.name===showPay.name);
     if(cust) {
@@ -2849,7 +2870,7 @@ export default function App({ session, onLogout }) {
         {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>removeBooking(b.firestoreId)}/>}
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} onDelete={b=>removeBooking(b.firestoreId)} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
-        {tab==="customer" && <CustPage onSaveNew={saveCustomer}/>}
+        {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}}/>}
