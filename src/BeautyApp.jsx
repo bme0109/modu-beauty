@@ -1880,6 +1880,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
   const [selVisit, setSelVisit] = useState(null); // 방문 이력 상세 팝업
   const [deletedBkIds, setDeletedBkIds] = useState(new Set());
   const [showCustMenu, setShowCustMenu] = useState(false);
+  const [smsEdit, setSmsEdit] = useState(null); // {phone, body}
   const TAGS = ["VIP","단골","예약금 필수","노쇼 주의","큐티클 예민","왼손잡이","손톱 얇음","다한증"];
   const [customTags, setCustomTags] = useState([]);
   const [newTag, setNewTag] = useState("");
@@ -2079,14 +2080,14 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
               const dateStr=lastPaid?lastPaid.date.slice(5).replace('-','.'):`${td.getMonth()+1}.${td.getDate()}`;
               const svcStr=lastPaid?(lastPaid.svc||''):'';
               const amtStr=lastPaid?((paidBks[lastPaid.id].amount||0).toLocaleString()):'';
-              const body=`루미네일 (${sel.name}님) ${dateStr} ${svcStr} ${amtStr}원 사용  잔액 ${prepaidBal.toLocaleString()}원`;
+              const body=`루미네일 (${sel.name}님)\n${dateStr} ${svcStr} ${amtStr}원 사용\n잔액 ${prepaidBal.toLocaleString()}원`;
               const phone=sel.phone.replace(/-/g,'');
               return (
-                <a href={`sms:${phone}&body=${encodeURIComponent(body)}`}
-                  style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:11,background:PL,border:"1px solid "+PM,color:P,fontSize:12,fontWeight:700,marginBottom:9,textDecoration:"none"}}>
+                <button onClick={()=>setSmsEdit({phone, body})}
+                  style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:11,background:PL,border:"1px solid "+PM,color:P,fontSize:12,fontWeight:700,marginBottom:9,cursor:"pointer",width:"100%"}}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   선불권 잔액 안내 문자
-                </a>
+                </button>
               );
             })()}
             {sel.tags.length>0 && (
@@ -2537,6 +2538,24 @@ function SalesPage({ paidBks, onDeletePaid }) {
           </div>
         </Sheet>
       )}
+      {smsEdit && (
+        <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div style={{width:"100%",maxWidth:430,background:WH,borderRadius:"22px 22px 0 0",padding:"22px 18px 44px"}}>
+            <div style={{fontSize:14,fontWeight:700,color:DK,marginBottom:10}}>문자 내용 확인 · 수정</div>
+            <textarea value={smsEdit.body} onChange={e=>setSmsEdit(v=>({...v,body:e.target.value}))}
+              style={{width:"100%",minHeight:90,padding:"12px",borderRadius:11,border:"1.5px solid "+G2,fontSize:13,color:DK,background:BG,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.7,fontFamily:"inherit"}}/>
+            <div style={{display:"flex",gap:8,marginTop:10}}>
+              <button onClick={()=>setSmsEdit(null)} style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:13,fontWeight:600,cursor:"pointer"}}>취소</button>
+              <a href={`sms:${smsEdit.phone}&body=${encodeURIComponent(smsEdit.body)}`}
+                onClick={()=>setTimeout(()=>setSmsEdit(null),300)}
+                style={{flex:2,padding:"13px",borderRadius:13,background:P,color:WH,fontSize:13,fontWeight:700,textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={WH} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                문자 보내기
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2869,6 +2888,7 @@ function buildPrepaidFromPaidBks(paidBks) {
 function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaidUpdate }) {
   const data = prepaidData || [];
   const [sel, setSel] = useState(null);
+  const [smsEdit, setSmsEdit] = useState(null);
   const [showCharge, setShowCharge] = useState(false);
   const [showUse, setShowUse] = useState(false);
   const [amount, setAmount] = useState("");
@@ -3076,11 +3096,10 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
             </div>
             </div>
             {custPhone && (
-              <a href={`sms:${custPhone.replace(/-/g,'')}` + `&body=${smsBody}`}
-                onClick={e=>e.stopPropagation()}
-                style={{width:36,height:36,borderRadius:"50%",background:PL,border:"1px solid "+PM,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,textDecoration:"none"}}>
+              <button onClick={e=>{e.stopPropagation();setSmsEdit({phone:custPhone.replace(/-/g,''),body:smsBody});}}
+                style={{width:36,height:36,borderRadius:"50%",background:PL,border:"1px solid "+PM,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              </a>
+              </button>
             )}
             <span onClick={() => setSel(d)} style={{fontSize:15,fontWeight:800,color:P,cursor:"pointer"}}>›</span>
           </div>
@@ -3305,6 +3324,24 @@ function ShopNameSetting({ shopName, onUpdate }) {
           <span style={{fontFamily:"Georgia,serif",fontSize:18,fontWeight:700,color:P}}>{shopName}</span>
           <button onClick={() => { setVal(shopName); setEditing(true); }}
             style={{padding:"5px 14px",borderRadius:9,background:PL,border:"none",color:P,fontSize:11,fontWeight:600,cursor:"pointer"}}>변경</button>
+        </div>
+      )}
+      {smsEdit && (
+        <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div style={{width:"100%",maxWidth:430,background:WH,borderRadius:"22px 22px 0 0",padding:"22px 18px 44px"}}>
+            <div style={{fontSize:14,fontWeight:700,color:DK,marginBottom:10}}>문자 내용 확인 · 수정</div>
+            <textarea value={smsEdit.body} onChange={e=>setSmsEdit(v=>({...v,body:e.target.value}))}
+              style={{width:"100%",minHeight:90,padding:"12px",borderRadius:11,border:"1.5px solid "+G2,fontSize:13,color:DK,background:BG,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.7,fontFamily:"inherit"}}/>
+            <div style={{display:"flex",gap:8,marginTop:10}}>
+              <button onClick={()=>setSmsEdit(null)} style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:13,fontWeight:600,cursor:"pointer"}}>취소</button>
+              <a href={`sms:${smsEdit.phone}&body=${encodeURIComponent(smsEdit.body)}`}
+                onClick={()=>setTimeout(()=>setSmsEdit(null),300)}
+                style={{flex:2,padding:"13px",borderRadius:13,background:P,color:WH,fontSize:13,fontWeight:700,textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={WH} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                문자 보내기
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -4030,12 +4067,18 @@ export default function App({ session, onLogout }) {
               <div style={{fontSize:13,color:G5,marginTop:6}}>{payDone.name}님 · 선불권 잔액 <span style={{color:P,fontWeight:700}}>{payDone.prepaidBal.toLocaleString()}원</span></div>
             </div>
             {payDone.phone ? (
-              <a href={`sms:${payDone.phone.replace(/-/g,'')}&body=${encodeURIComponent(`루미네일 (${payDone.name}님) ${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용  잔액 ${payDone.prepaidBal.toLocaleString()}원`)}`}
-                onClick={() => setTimeout(()=>setPayDone(null),500)}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px",borderRadius:14,background:PL,border:"1px solid "+PM,color:P,fontSize:14,fontWeight:700,marginBottom:10,textDecoration:"none"}}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                잔액 안내 문자 발송
-              </a>
+              <>
+                <textarea
+                  defaultValue={`루미네일 (${payDone.name}님)\n${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용\n잔액 ${payDone.prepaidBal.toLocaleString()}원`}
+                  id="payDoneSmsText"
+                  style={{width:"100%",minHeight:80,padding:"11px",borderRadius:11,border:"1.5px solid "+G2,fontSize:13,color:DK,background:BG,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.7,fontFamily:"inherit",marginBottom:10}}/>
+                <a href={`sms:${payDone.phone.replace(/-/g,'')}`}
+                  onClick={e=>{const el=document.getElementById('payDoneSmsText');const txt=el?el.value:`루미네일 (${payDone.name}님)\n${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용\n잔액 ${payDone.prepaidBal.toLocaleString()}원`;e.currentTarget.href=`sms:${payDone.phone.replace(/-/g,'')}&body=${encodeURIComponent(txt)}`;setTimeout(()=>setPayDone(null),500);}}
+                  style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px",borderRadius:14,background:P,color:WH,fontSize:14,fontWeight:700,marginBottom:10,textDecoration:"none"}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={WH} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  문자 보내기
+                </a>
+              </>
             ) : null}
             <button onClick={() => setPayDone(null)} style={{width:"100%",padding:"14px",borderRadius:14,background:G2,border:"none",color:G7,fontSize:14,fontWeight:600,cursor:"pointer"}}>닫기</button>
           </div>
