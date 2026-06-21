@@ -908,6 +908,7 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
                 time: f.time,
                 mins: Number(f.mins),
                 name: f.name || "미지정",
+                phone: f.phone || "",
                 svc: f.svc || "시술 미정",
                 price: Number(f.svcPrice) || 0,
                 dep: f.dep || "unpaid",
@@ -1518,6 +1519,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
               <div style={{width:42,height:42,borderRadius:"50%",background:P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:WH,flexShrink:0}}>{selBk.name[0]}</div>
               <div>
                 <div style={{fontSize:16,fontWeight:800,color:DK}}>{selBk.name}</div>
+                {(selBk.phone||(CUSTS.find(c=>c.name===selBk.name)?.phone)) && <div style={{fontSize:12,color:P,fontWeight:600,marginBottom:1}}>{selBk.phone||CUSTS.find(c=>c.name===selBk.name)?.phone}</div>}
                 <div style={{fontSize:12,color:G5}}>담당자{selBk.sid+1}</div>
               </div>
             </div>
@@ -2485,6 +2487,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
               <div style={{width:44,height:44,borderRadius:"50%",background:P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:700,color:WH,flexShrink:0}}>{showBk.name[0]}</div>
               <div>
                 <div style={{fontSize:16,fontWeight:800,color:DK}}>{showBk.name}</div>
+                {(showBk.phone||(CUSTS.find(c=>c.name===showBk.name)?.phone)) && <div style={{fontSize:12,color:P,fontWeight:600,marginBottom:1}}>{showBk.phone||CUSTS.find(c=>c.name===showBk.name)?.phone}</div>}
                 <div style={{fontSize:12,color:G5}}>담당자{showBk.sid+1}</div>
               </div>
             </div>
