@@ -172,6 +172,7 @@ function SheetHandle({ title, onClose }) {
 function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=30 }) {
   const [showCal, setShowCal] = useState(false);
   const [showTime, setShowTime] = useState(false);
+  const [showSvc, setShowSvc] = useState(false);
 
   const timeOpts = [];
   for(let h=9; h<=20; h++){
@@ -282,8 +283,28 @@ function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=
         {/* 시술명 */}
         <div style={{marginBottom:14}}>
           <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술명</div>
-          <input value={editBk.svc} onChange={e => setEditBk(p=>({...p,svc:e.target.value}))}
-            style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+          <button onClick={() => {setShowSvc(v=>!v); setShowCal(false); setShowTime(false);}}
+            style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1.5px solid "+(showSvc?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
+            <span style={{fontSize:13,fontWeight:600,color:editBk.svc?DK:G5}}>{editBk.svc||"시술 선택"}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={showSvc?P:G5} strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          {showSvc && (
+            <div style={{marginTop:6,background:PS,borderRadius:12,padding:"8px",border:"1px solid "+G2,maxHeight:200,overflowY:"auto"}}>
+              <input
+                value={editBk.svc}
+                onChange={e => setEditBk(p=>({...p,svc:e.target.value}))}
+                placeholder="직접 입력..."
+                style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box",marginBottom:6}}
+              />
+              {SVCS.flatMap(cat => cat.items).map(s => (
+                <div key={s.id} onClick={() => {setEditBk(p=>({...p,svc:s.name,mins:s.mins,price:s.price})); setShowSvc(false);}}
+                  style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",background:editBk.svc===s.name?P:"transparent",marginBottom:2}}>
+                  <span style={{fontSize:12,fontWeight:editBk.svc===s.name?700:400,color:editBk.svc===s.name?WH:DK}}>{s.name}</span>
+                  <span style={{fontSize:11,color:editBk.svc===s.name?"rgba(255,255,255,0.7)":G5,marginLeft:8}}>{s.price.toLocaleString()}원 · {s.mins}분</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 시술 시간 */}
@@ -1068,6 +1089,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   const [miniY, setMiniY] = useState(() => Number(date.slice(0,4)));
   const [miniM, setMiniM] = useState(() => Number(date.slice(5,7)));
   const [editBk, setEditBk] = useState(null);
+  const [delConfirmBk, setDelConfirmBk] = useState(null);
   const [swipeStartX, setSwipeStartX] = useState(0);
   // 드래그 상태
   const [dragBk, setDragBk] = useState(null);
@@ -1666,8 +1688,8 @@ function CalPage({ onDate }) {
   });
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 118px)",padding:"4px 8px 0"}}>
-      <div style={{background:WH,borderRadius:16,padding:"4px 8px 2px",border:"1px solid "+G2,flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 134px)",padding:"2px 8px 0"}}>
+      <div style={{background:WH,borderRadius:16,padding:"2px 8px 2px",border:"1px solid "+G2,flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexShrink:0}}>
           <button onClick={prevMo} style={{width:24,height:24,borderRadius:"50%",border:"1px solid "+G2,background:WH,cursor:"pointer",color:G7,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
           <div style={{position:"relative",display:"flex",alignItems:"center"}}>
@@ -1728,7 +1750,7 @@ function CalPage({ onDate }) {
               <span style={{fontSize:10,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.0}}>{day.d}</span>
               {day.hol&&!day.isT&&<span style={{fontSize:5,color:RD,lineHeight:1,textAlign:"center"}}>{day.hol}</span>}
               {day.bks.slice(0,4).map(b => (
-                <div key={b.id} style={{fontSize:9,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.05,padding:"0 1px"}}>{b.name}</div>
+                <div key={b.id} style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.05,padding:"0 1px"}}>{b.name}</div>
               ))}
               {day.bks.length>4 && <div style={{fontSize:7,color:day.isT?"rgba(255,255,255,0.6)":G5,lineHeight:1}}>+{day.bks.length-4}</div>}
             </div>
