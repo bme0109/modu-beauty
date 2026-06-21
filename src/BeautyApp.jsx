@@ -1145,6 +1145,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
   const [miniM, setMiniM] = useState(() => Number(date.slice(5,7)));
   const [editBk, setEditBk] = useState(null);
   const [delConfirmBk, setDelConfirmBk] = useState(null);
+  const [dragConfirm, setDragConfirm] = useState(null);
   const [swipeStartX, setSwipeStartX] = useState(0);
   // 드래그 상태
   const [dragBk, setDragBk] = useState(null);
@@ -1178,6 +1179,13 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
       const slotOffset = timeToOffset(slotTime);
       return slotOffset > bStart && slotOffset < bEnd;
     });
+  }
+  function fmtDT(ds, ts) {
+    const [yr,mo,dy] = ds.split('-').map(Number);
+    const [h,m] = ts.split(':').map(Number);
+    const ap = h>=12?'오후':'오전';
+    const h12 = h>12?h-12:(h===0?12:h);
+    return `${yr}.${mo}.${dy}. ${ap} ${h12}:${String(m).padStart(2,'0')}`;
   }
   // 빈 슬롯 클릭 시 해당 시간으로 예약 등록 (slotUnit 단위로 snap)
   function handleCellClick(slotTime, sid, e) {
@@ -1415,18 +1423,16 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
                                   setDragDate(nds);
                                 };
                                 dragEndRef.current = () => {
-                                  const finalTime = dragTime;
                                   setDragBk(null);
                                   setDragTime(t => {
                                     setDragDate(d => {
                                       const tChanged = t && t!==origTime;
                                       const dChanged = d && d!==origDate;
-                                      if(onUpdate && (tChanged||dChanged)) {
+                                      if(tChanged||dChanged) {
                                         const upd = {};
                                         if(tChanged) upd.time = t;
                                         if(dChanged) upd.date = d;
-                                        onUpdate(bk, upd);
-                                        if(dChanged) setCur(d);
+                                        setTimeout(() => setDragConfirm({bk,origDate,origTime,origSid:bk.sid,newDate:d||origDate,newTime:t||origTime,newSid:bk.sid,upd}), 0);
                                       }
                                       return null;
                                     });
@@ -1532,9 +1538,8 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
                                   if(finalTime !== origTime) upd.time = finalTime;
                                   if(finalDate !== origDate) upd.date = finalDate;
                                   if(finalSid !== origSid) upd.sid = finalSid;
-                                  if(onUpdate && Object.keys(upd).length > 0) {
-                                    onUpdate(bk, upd);
-                                    if(upd.date) setCur(upd.date);
+                                  if(Object.keys(upd).length > 0) {
+                                    setDragConfirm({bk,origDate,origTime,origSid,newDate:finalDate,newTime:finalTime,newSid:finalSid,upd});
                                   }
                                   didDragRef.current = true;
                                 }
@@ -1718,6 +1723,37 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
           </div>
         </div>
       )}
+      {dragConfirm && (() => {
+        const {bk,origDate,origTime,origSid,newDate,newTime,newSid,upd} = dragConfirm;
+        const origStaffName = staff.find(s=>s.id===origSid)?.name||'';
+        const newStaffName  = staff.find(s=>s.id===newSid)?.name||'';
+        const staffChanged  = newSid !== origSid;
+        return (
+          <div style={{position:"fixed",inset:0,zIndex:610,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setDragConfirm(null)}>
+            <div style={{background:WH,borderRadius:"20px 20px 0 0",padding:"28px 20px 44px",width:"100%",maxWidth:430,boxSizing:"border-box"}} onClick={e=>e.stopPropagation()}>
+              <div style={{fontSize:16,fontWeight:800,color:DK,marginBottom:6,textAlign:"center"}}>예약 변경 확인</div>
+              <div style={{fontSize:13,fontWeight:700,color:P,marginBottom:14,textAlign:"center"}}>{bk.name} 고객</div>
+              <div style={{background:PS,borderRadius:14,padding:"14px 16px",marginBottom:24}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <span style={{fontSize:11,color:G5,fontWeight:600,minWidth:40,textAlign:"right"}}>변경 전</span>
+                  <span style={{fontSize:13,color:G7}}>{fmtDT(origDate,origTime)}{staffChanged?` · ${origStaffName}`:''}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                  <span style={{fontSize:18,color:PM}}>↓</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:11,color:P,fontWeight:700,minWidth:40,textAlign:"right"}}>변경 후</span>
+                  <span style={{fontSize:14,fontWeight:800,color:DK}}>{fmtDT(newDate,newTime)}{staffChanged?` · ${newStaffName}`:''}</span>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>setDragConfirm(null)} style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:14,fontWeight:700,cursor:"pointer"}}>취소</button>
+                <button onClick={()=>{if(onUpdate){onUpdate(bk,upd);if(upd.date)setCur(upd.date);}setDragConfirm(null);}} style={{flex:1,padding:"13px",borderRadius:13,background:P,border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>확인</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
