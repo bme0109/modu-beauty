@@ -2613,7 +2613,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
             <div style={{fontSize:9,color:G5,marginBottom:3}}>오늘 매출 ›</div>
             <div style={{fontSize:17,fontWeight:800,color:DK}}>{rev.toLocaleString()}</div>
           </div>
-          <div onClick={() => setShowSales("today")} style={{background:WH,borderRadius:15,padding:"11px",border:"1px solid "+G2,cursor:"pointer"}}>
+          <div onClick={() => setShowSales("month")} style={{background:WH,borderRadius:15,padding:"11px",border:"1px solid "+G2,cursor:"pointer"}}>
             <div style={{fontSize:9,color:G5,marginBottom:3}}>이번달 ›</div>
             <div style={{fontSize:17,fontWeight:800,color:DK}}>{mrev.toLocaleString()}</div>
             <div style={{marginTop:5,marginBottom:4,height:3,background:G2,borderRadius:2}}>
@@ -2707,7 +2707,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
         })}
       </div>
 
-      {showSales && (
+      {showSales === "today" && (
         <Sheet onClose={() => setShowSales(null)} maxH="85vh">
           <SheetHandle title="매출 내역" onClose={() => setShowSales(null)}/>
           <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
@@ -2752,6 +2752,53 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
           </div>
         </Sheet>
       )}
+      {showSales === "month" && (() => {
+        const monthEntries = Object.entries(paidBks).filter(([_,p])=>p.date&&p.date.slice(0,7)===TODAY.slice(0,7));
+        const methodOrder = ["카드","현금","N페이","계좌이체","선불권 충전","선불권 사용","기타"];
+        const byMethod = monthEntries.reduce((acc,[id,p])=>{const m=p.method||"기타";if(!acc[m])acc[m]=[];acc[m].push([id,p]);return acc;},{});
+        const methodKeys = [...new Set([...methodOrder.filter(m=>byMethod[m]),...Object.keys(byMethod).filter(m=>!methodOrder.includes(m))])];
+        return (
+          <Sheet onClose={() => setShowSales(null)} maxH="85vh">
+            <SheetHandle title="이번달 매출 상세" onClose={() => setShowSales(null)}/>
+            <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
+              <div style={{background:PS,borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+                <div style={{fontSize:11,color:G5,marginBottom:4}}>이번달 총 매출</div>
+                <div style={{fontSize:22,fontWeight:800,color:P}}>{mrev.toLocaleString()}원</div>
+                <div style={{marginTop:8,height:3,background:G2,borderRadius:2}}>
+                  <div style={{width:Math.min(mrev/8000000*100,100).toFixed(0)+"%",height:"100%",background:P,borderRadius:2}}/>
+                </div>
+                <div style={{fontSize:10,color:G5,marginTop:4}}>목표 8,000,000원</div>
+              </div>
+              {methodKeys.map(method => {
+                const entries = byMethod[method]||[];
+                const total = entries.reduce((s,[_,p])=>s+(p.amount||p.paidAmt||0),0);
+                return (
+                  <div key={method} style={{marginBottom:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <span style={{fontSize:12,fontWeight:700,color:G5}}>{method}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:DK}}>{total.toLocaleString()}원</span>
+                    </div>
+                    {entries.sort(([_,a],[__,b])=>(b.date||'').localeCompare(a.date||'')).map(([bkId,p]) => {
+                      const b = BKS.find(x=>String(x.id)===String(bkId)||String(x.firestoreId)===String(bkId));
+                      const name = b?.name||"고객";
+                      const dStr = (p.date||'').slice(5).replace('-','.');
+                      return (
+                        <div key={bkId} style={{display:"flex",alignItems:"center",padding:"9px 14px",borderRadius:11,border:"1px solid "+G2,marginBottom:5,background:WH,gap:8}}>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:13,fontWeight:700,color:DK}}>{name}</div>
+                            <div style={{fontSize:11,color:G5}}>{dStr} · {b?.svc||""}</div>
+                          </div>
+                          <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.amount||p.paidAmt||0).toLocaleString()}원</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </Sheet>
+        );
+      })()}
 
       {showBk && (
         <Sheet onClose={() => setShowBk(null)} maxH="75vh">
