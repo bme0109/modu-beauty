@@ -684,9 +684,16 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     }
     if(svcName) upd.svc = svcName;
     if(svcAmt)  upd.svcPrice = svcAmt;
-    if(upd.phone){
-      const ex = CUSTS.find(c=>c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
-      if(ex) upd.cid = String(ex.id);
+    if(upd.name || upd.phone){
+      const ex = CUSTS.find(c=>c.phone && upd.phone && c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
+      if(ex){
+        upd.cid = String(ex.id);
+      } else if(upd.name){
+        const newC = {id:Date.now(), name:upd.name, phone:upd.phone||"", birth:"", memo:"", tags:[], visits:0, revenue:0};
+        CUSTS = [...CUSTS, newC];
+        if(onSaveNewCust) onSaveNewCust(newC);
+        upd.cid = String(newC.id);
+      }
     }
     setF(p=>({...p,...upd}));
     setNaverText("");
