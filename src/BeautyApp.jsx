@@ -2724,7 +2724,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                   {salesDateGroups[date].map(([bkId,p]) => {
                     const b = BKS.find(x=>String(x.id)===String(bkId)||String(x.firestoreId)===String(bkId));
                     const name = b?.name||"고객";
-                    const isPrepaid = p.method==='선불권 사용';
+                    const isPrepaid = p.method&&p.method.includes('선불권');
                     const custPhone = (CUSTS.find(c=>c.name===name)?.phone||'').replace(/-/g,'');
                     const prepaidRec = isPrepaid ? PREPAID_DATA.find(d=>d.custName===name) : null;
                     const bal = prepaidRec ? prepaidRec.balance : 0;
@@ -4487,4 +4487,5 @@ export default function App({ session, onLogout }) {
     </div>
   );
 }
+
 
