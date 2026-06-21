@@ -690,7 +690,9 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     const phoneM = txt.match(/전화번호[\s\t:]+([\d\-]+)/) || txt.match(/(010-\d{4}-\d{4})/);
     // 날짜: 이용일시 레이블 없어도 패턴 직접 탐색
     const dtM = txt.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
-    // 총 금액
+    // 실제 결제금액 (상세보기: 예약금 결제정보 > 결제금액)
+    const payAmtM = txt.match(/결제금액[\s\t:]*([\d,]+)원/);
+    // 선택메뉴 총액 (톡톡: 시술 금액, 예약금 아님)
     const totalM = txt.match(/총\s*([\d,]+)원/);
     // 선택메뉴 섹션 - 멀티라인 방식
     const mi = lines.findIndex(l=>l.startsWith('선택메뉴'));
@@ -716,8 +718,10 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     if(!svcName){
       const payLineM = txt.match(/(?:매장방문결제|선결제)[\s\t:]+(.+)/);
       if(payLineM){
-        const parts = payLineM[1].split('+').map(s=>s.trim()).filter(s=>s && !ANNOUNCE_P.some(a=>s.includes(a)));
-        if(parts.length>0) svcName = parts.join(', ');
+        const parts = payLineM[1].split('+').map(s=>s.trim())
+          .filter(s=>s && !ANNOUNCE_P.some(a=>s.includes(a)))
+          .map(s=>s.replace(/\s+\d+$/, '').trim()); // 수량 숫자 제거 ("젤제거+기본케어 1" → "젤제거+기본케어")
+        if(parts.length>0) svcName = parts.filter(Boolean).join(', ');
       }
     }
     // 앞의 "+ " 제거 (멀티라인 복사 시 마지막 항목 앞에 붙음)
@@ -745,9 +749,12 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     }
     if(svcName) upd.svc = svcName;
     if(svcAmt)  upd.svcPrice = svcAmt;
+    // 시술 금액: 선택메뉴 총액(톡톡) or 서비스 항목 금액
+    if(totalM && !upd.svcPrice) upd.svcPrice = totalM[1].replace(/,/g,'');
     if(txt.includes('결제완료')){
       upd.dep='naver_paid';
-      upd.depAmt = totalM ? totalM[1].replace(/,/g,'') : svcAmt;
+      // 예약금: 상세보기의 결제금액 우선, 없으면 빈값 (총액은 시술가격이지 예약금이 아님)
+      if(payAmtM) upd.depAmt = payAmtM[1].replace(/,/g,'');
     } else if(txt.includes('매장방문결제')) {
       upd.dep='naver';
     } else {
