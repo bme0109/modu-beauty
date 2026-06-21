@@ -683,11 +683,14 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   function applyNaverPaste() {
     const txt = naverText;
     const ANNOUNCE_P = ['예약 변경 및 취소 안내','네이버 예약 시간 변동 안내'];
-    const nameM  = txt.match(/예약자명[\s:]+([^\n\t]+)/);
-    const phoneM = txt.match(/전화번호[\s:]+([\d\-]+)/);
-    const dtM    = txt.match(/이용일시[\s:]+(\d{4})\.(\d{2})\.(\d{2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
+    // 예약자명(톡톡) or 예약자(상세보기)
+    const nameM  = txt.match(/예약자명?[\s\t:]+([^\n\t]+)/);
+    const phoneM = txt.match(/전화번호[\s\t:]+([\d\-]+)/);
+    // 날짜: 2026.06.30.(화) or 2026. 6. 30.(화) 모두 허용
+    const dtM    = txt.match(/이용일시[\s\t:]+(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
     const depM   = txt.match(/결제완료\s*([\d,]+)원/);
     const lines  = txt.split('\n').map(l=>l.trim()).filter(Boolean);
+    // 톡톡 형식: 선택메뉴 섹션
     const mi = lines.findIndex(l=>l.startsWith('선택메뉴'));
     let svcName="", svcAmt="";
     if(mi>=0){
@@ -698,12 +701,20 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
         if(pm){ svcName=pm[1].trim(); svcAmt=pm[2].replace(/,/g,''); break; }
       }
     }
+    // 상세보기 형식: 매장방문결제/선결제 필드 (+ 구분)
+    if(!svcName){
+      const payLineM = txt.match(/(?:매장방문결제|선결제|네이버페이)[\s\t:]+(.+)/);
+      if(payLineM){
+        const parts = payLineM[1].split('+').map(s=>s.trim()).filter(s=>s && !ANNOUNCE_P.some(a=>s.includes(a)));
+        if(parts.length>0) svcName = parts.join(', ');
+      }
+    }
     const upd = {};
     if(nameM)  upd.name  = nameM[1].trim();
     if(phoneM) upd.phone = phoneM[1].trim();
     if(dtM){
       const [,yr,mo,dy,ap,hS,mS] = dtM;
-      upd.date = `${yr}-${mo}-${dy}`;
+      upd.date = `${yr}-${mo.padStart(2,'0')}-${dy.padStart(2,'0')}`;
       let h = Number(hS);
       if(ap==='오후' && h<12) h+=12;
       if(ap==='오전' && h===12) h=0;
@@ -711,8 +722,10 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     }
     if(svcName) upd.svc = svcName;
     if(svcAmt)  upd.svcPrice = svcAmt;
-    upd.dep = 'naver_paid';
-    if(depM) upd.depAmt = depM[1].replace(/,/g,'');
+    // 결제완료 있으면 naver_paid(N+예), 매장방문이면 naver(N만)
+    if(depM){ upd.dep='naver_paid'; upd.depAmt=depM[1].replace(/,/g,''); }
+    else if(txt.includes('매장방문결제')) upd.dep='naver';
+    else upd.dep='naver_paid';
     if(upd.name || upd.phone){
       const ex = CUSTS.find(c=>c.phone && upd.phone && c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
       if(ex){
