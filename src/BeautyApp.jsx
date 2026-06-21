@@ -3045,79 +3045,54 @@ function ShopNameSetting({ shopName, onUpdate }) {
   );
 }
 
-const NAVER_IMPORT_CUSTS = [
-  {name:"조혜경",phone:"010-3302-3168"},{name:"한송이",phone:"010-9983-3777"},
-  {name:"문예진",phone:"010-8253-6736"},{name:"김지윤",phone:"010-6414-9222"},
-  {name:"백자은",phone:"010-9174-1516"},{name:"김서연",phone:"010-2101-1898"},
-  {name:"김지윤",phone:"010-9384-8004"},{name:"장서윤",phone:"010-7900-4324"},
-  {name:"김연실",phone:"010-3617-4611"},{name:"한성미",phone:"010-6693-2236"},
-  {name:"이수연",phone:"010-7373-0990"},{name:"박주연",phone:"010-5660-6803"},
-  {name:"신혜진",phone:"010-3383-8024"},{name:"진성실",phone:"010-4847-4091"},
-  {name:"장라윤",phone:"010-2031-0028"},{name:"김혜윤",phone:"010-9059-0073"},
-  {name:"임현지",phone:"010-9296-6986"},{name:"정민우",phone:"010-7573-2871"},
-  {name:"성수랔",phone:"010-9029-6728"},{name:"김다림",phone:"010-6422-8707"},
-  {name:"송진희",phone:"010-7481-0816"},{name:"정윤원",phone:"010-9923-9525"},
-  {name:"강명희",phone:"010-2641-1364"},{name:"차혜정",phone:"010-8789-9540"},
-  {name:"조서경",phone:"010-4627-8471"},{name:"유시은",phone:"010-9544-5887"},
-  {name:"허민아",phone:"010-9178-6882"},{name:"김하나",phone:"010-9228-2378"},
-  {name:"이주연",phone:"010-6385-1716"},{name:"송지원",phone:"010-2108-1039"},
-  {name:"조수빈",phone:"010-6873-5555"},{name:"정선호",phone:"010-3319-4269"},
-  {name:"박연하",phone:"010-7102-3405"},{name:"권현진",phone:"010-7132-9302"},
-  {name:"강보은",phone:"010-2249-2446"},{name:"정민주",phone:"010-3924-8541"},
-  {name:"민소진",phone:"010-2373-9320"},{name:"박은성",phone:"010-2034-0826"},
-  {name:"이계선",phone:"010-8919-8425"},{name:"송선화",phone:"010-6484-3511"},
-  {name:"이서정",phone:"010-3011-1525"},{name:"장미진",phone:"010-5044-4681"},
-  {name:"정윤아",phone:"010-7157-8728"},{name:"임경진",phone:"010-9198-5163"},
-  {name:"고다윤",phone:"010-3588-8521"},{name:"황혜진",phone:"010-2000-9088"},
-  {name:"장미리",phone:"010-9239-9553"},{name:"정지영",phone:"010-9212-2635"},
-  {name:"이가은",phone:"010-3250-7885"},{name:"김지나",phone:"010-6649-4647"},
-  {name:"이승아",phone:"010-2445-6393"},{name:"조은장",phone:"010-2086-6595"},
-  {name:"류경아",phone:"010-2546-1449"},{name:"신수경",phone:"010-2469-1628"},
-  {name:"황지원",phone:"010-6567-3019"},{name:"전지나",phone:"010-4837-1610"},
-  {name:"정유현",phone:"010-7106-7716"},{name:"김혜영",phone:"010-3194-2241"},
-  {name:"김려진",phone:"010-3167-9076"},{name:"진상희",phone:"010-7387-0327"},
-  {name:"이성숙",phone:"010-8070-6356"},{name:"이슬안",phone:"010-5059-5241"},
-  {name:"김은경",phone:"010-9419-5738"},{name:"심주희",phone:"010-5432-0493"},
-  {name:"전혜원",phone:"010-2980-6500"},{name:"이시정",phone:"010-4064-8136"},
-  {name:"정희현",phone:"010-3634-5963"},{name:"이언희",phone:"010-9243-4268"},
-  {name:"곽영선",phone:"010-4090-6142"},{name:"이미지",phone:"010-8680-5243"},
-  {name:"공은혜",phone:"010-8971-0320"},{name:"박정인",phone:"010-5532-2024"},
-  {name:"박유나",phone:"010-2999-3502"},{name:"최희선",phone:"010-4305-5280"},
-  {name:"여지원",phone:"010-4584-9975"},{name:"유수현",phone:"010-3864-1868"},
-  {name:"류예지",phone:"010-7678-1786"},{name:"박소윤",phone:"010-2465-4941"},
-  {name:"강태임",phone:"010-5305-1908"},{name:"박희주",phone:"010-2637-5391"},
-  {name:"김지윤",phone:"010-9075-3947"},{name:"강명아",phone:"010-8878-1680"},
-  {name:"김지은",phone:"010-5282-5985"},{name:"김지연",phone:"010-2543-5569"},
-  {name:"김민정",phone:"010-4963-2337"},{name:"김가현",phone:"010-6369-2024"},
-  {name:"김지현",phone:"010-3845-5320"},{name:"박가람",phone:"010-9176-2417"},
-  {name:"김나현",phone:"010-7202-5907"},{name:"김다솜",phone:"010-4735-5904"},
-  {name:"용혜민",phone:"010-2711-9715"},{name:"박미정",phone:"010-9585-2171"},
-  {name:"신은선",phone:"010-9422-6290"},{name:"이보민",phone:"010-5254-6254"},
-];
 function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers }) {
   const [sub, setSub] = useState(initialSub||null);
   const [sl, setSl] = useState(staff);
   const [newN, setNewN] = useState("");
   const [editId, setEditId] = useState(null);
   const [editN, setEditN] = useState("");
+  const [naverImportText, setNaverImportText] = useState("");
   const [importing, setImporting] = useState(false);
-  const [importDone, setImportDone] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [showImport, setShowImport] = useState(false);
 
-  async function importNaverCusts() {
+  function parseNaverText(txt) {
+    const STATUS = new Set(["완료","취소","확정","대기","노쇼","상태","예약자","전화번호"]);
+    const lines = txt.split(/\n/).map(l=>l.split(/\t/)[0].trim()).filter(Boolean);
+    const result = new Map();
+    for(let i=0; i<lines.length; i++) {
+      const phoneM = lines[i].match(/^(010-\d{4}-\d{4})/);
+      if(phoneM) {
+        const phone = phoneM[1];
+        for(let j=i-1; j>=Math.max(0,i-4); j--) {
+          const cand = lines[j];
+          if(!STATUS.has(cand) && !/^\d/.test(cand) && cand.length>=2 && cand.length<=10 && /[가-힣]/.test(cand)) {
+            if(!result.has(phone)) result.set(phone, cand);
+            break;
+          }
+        }
+      }
+    }
+    return Array.from(result.entries()).map(([phone,name])=>({name,phone}));
+  }
+
+  async function importParsed() {
     if(!onImportCustomers) return;
+    const parsed = parseNaverText(naverImportText);
     setImporting(true);
     let added = 0;
-    for(const nc of NAVER_IMPORT_CUSTS) {
-      const exists = CUSTS.find(c => c.phone.replace(/-/g,"") === nc.phone.replace(/-/g,""));
+    for(const nc of parsed) {
+      const exists = CUSTS.find(c=>c.phone.replace(/-/g,"")===nc.phone.replace(/-/g,""));
       if(!exists) {
-        const c = {id: Date.now()+added, name: nc.name, phone: nc.phone, birth:"", memo:"", tags:[], visits:0, revenue:0};
+        const c = {id:Date.now()+added, name:nc.name, phone:nc.phone, birth:"", memo:"", tags:[], visits:0, revenue:0};
         CUSTS = [...CUSTS, c];
         await onImportCustomers(c);
         added++;
       }
     }
     setImporting(false);
-    setImportDone(true);
+    setImportResult(added);
+    setNaverImportText("");
   }
   const [sh, setSh] = useState("10:00");
   const [eh, setEh] = useState("20:00");
@@ -3256,12 +3231,28 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
       ))}
       {onImportCustomers && (
         <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2}}>
-          <div style={{fontSize:13,fontWeight:600,color:DK,marginBottom:6}}>N예약 고객 가져오기</div>
-          <div style={{fontSize:11,color:G5,marginBottom:10}}>네이버 예약 고객 94명 → 앱에 일괄 등록 (중복 제외)</div>
-          <button onClick={importNaverCusts} disabled={importing||importDone}
-            style={{width:"100%",padding:"11px",borderRadius:11,background:importDone?"#E8F9EE":importing?G2:"#03C75A",border:"none",color:importDone?"#009444":importing?G5:WH,fontSize:13,fontWeight:700,cursor:importing||importDone?"default":"pointer"}}>
-            {importDone ? "✓ 가져오기 완료" : importing ? "가져오는 중..." : "고객 가져오기"}
-          </button>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:13,fontWeight:600,color:DK}}>N예약 고객 가져오기</div>
+            <button onClick={()=>setShowImport(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:12,fontWeight:600}}>{showImport?"닫기":"열기"}</button>
+          </div>
+          <div style={{fontSize:11,color:G5,marginBottom:showImport?10:0}}>네이버 예약관리 페이지 전체 복사 → 붙여넣기로 고객 자동 등록</div>
+          {showImport && (
+            <div>
+              <textarea value={naverImportText} onChange={e=>{setNaverImportText(e.target.value);setImportResult(null);}}
+                placeholder={"네이버 예약관리 페이지에서 Ctrl+A → Ctrl+C 후 여기에 붙여넣기"}
+                rows={6}
+                style={{width:"100%",border:"1.5px solid #03C75A",borderRadius:9,padding:"9px 11px",fontSize:12,color:DK,background:WH,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"inherit",marginBottom:8}}/>
+              {naverImportText && <div style={{fontSize:11,color:G5,marginBottom:8}}>
+                인식된 고객: <b style={{color:P}}>{parseNaverText(naverImportText).length}명</b>
+                {" ("}기존 제외 시 {parseNaverText(naverImportText).filter(nc=>!CUSTS.find(c=>c.phone.replace(/-/g,"")===nc.phone.replace(/-/g,""))).length}명 신규{")"}
+              </div>}
+              {importResult!==null && <div style={{fontSize:12,color:"#009444",fontWeight:600,marginBottom:8}}>✓ {importResult}명 등록 완료</div>}
+              <button onClick={importParsed} disabled={importing||!naverImportText}
+                style={{width:"100%",padding:"10px",borderRadius:10,background:importing?G2:"#03C75A",border:"none",color:importing?G5:WH,fontSize:13,fontWeight:700,cursor:importing||!naverImportText?"default":"pointer"}}>
+                {importing ? "등록 중..." : "고객 등록"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
