@@ -1601,7 +1601,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
             </div>
             <div style={{display:"flex",gap:9,marginTop:14}}>
               {(!paidBks||!paidBks[selBk.id]) && (
-                <button onClick={() => { if(onDelete)onDelete(selBk); setSelBk(null); }}
+                <button onClick={() => setDelConfirmBk(selBk)}
                   style={{padding:"11px 14px",borderRadius:13,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:12,fontWeight:700,cursor:"pointer"}}>삭제</button>
               )}
               <button onClick={() => { setEditBk({...selBk}); setSelBk(null); }}
@@ -1628,6 +1628,18 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
           }}
           onClose={() => setEditBk(null)}
         />
+      )}
+      {delConfirmBk && (
+        <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setDelConfirmBk(null)}>
+          <div style={{background:WH,borderRadius:"20px 20px 0 0",padding:"28px 20px 44px",width:"100%",maxWidth:430,boxSizing:"border-box"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:16,fontWeight:800,color:DK,marginBottom:8,textAlign:"center"}}>예약 삭제</div>
+            <div style={{fontSize:13,color:G5,marginBottom:28,textAlign:"center",lineHeight:1.6}}>삭제된 예약은 복구할 수 없습니다.<br/>예약을 삭제하시겠습니까?</div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setDelConfirmBk(null)} style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:14,fontWeight:700,cursor:"pointer"}}>취소</button>
+              <button onClick={()=>{if(onDelete)onDelete(delConfirmBk);setSelBk(null);setDelConfirmBk(null);}} style={{flex:1,padding:"13px",borderRadius:13,background:"#FF4D4D",border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>삭제</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2387,6 +2399,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   const [showSales, setShowSales] = useState(null);
   const [showBk, setShowBk] = useState(null);
   const [editBk, setEditBk] = useState(null);
+  const [delConfirmBk, setDelConfirmBk] = useState(null);
   const [swipeMap, setSwipeMap] = useState({});
   const [swipeTouchX, setSwipeTouchX] = useState({});
   const [selDate, setSelDate] = useState(TODAY);
@@ -2630,7 +2643,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
             </div>
             {!paidBks[showBk.id] && (
               <div style={{display:"flex",gap:9,marginTop:16}}>
-                <button onClick={() => { if(onDelete)onDelete(showBk); setShowBk(null); }}
+                <button onClick={() => setDelConfirmBk(showBk)}
                   style={{padding:"13px 12px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>삭제</button>
                 <button onClick={() => { setEditBk({...showBk}); setShowBk(null); }}
                   style={{flex:1,padding:"13px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>수정</button>
@@ -2663,6 +2676,18 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
           }}
           onClose={() => setEditBk(null)}
         />
+      )}
+      {delConfirmBk && (
+        <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setDelConfirmBk(null)}>
+          <div style={{background:WH,borderRadius:"20px 20px 0 0",padding:"28px 20px 44px",width:"100%",maxWidth:430,boxSizing:"border-box"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:16,fontWeight:800,color:DK,marginBottom:8,textAlign:"center"}}>예약 삭제</div>
+            <div style={{fontSize:13,color:G5,marginBottom:28,textAlign:"center",lineHeight:1.6}}>삭제된 예약은 복구할 수 없습니다.<br/>예약을 삭제하시겠습니까?</div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setDelConfirmBk(null)} style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:14,fontWeight:700,cursor:"pointer"}}>취소</button>
+              <button onClick={()=>{if(onDelete)onDelete(delConfirmBk);setShowBk(null);setDelConfirmBk(null);}} style={{flex:1,padding:"13px",borderRadius:13,background:"#FF4D4D",border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>삭제</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
