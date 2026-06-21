@@ -3055,9 +3055,17 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
           </div>
           <button onClick={() => setShowNew(true)} style={{padding:"8px 12px",borderRadius:11,background:P,border:"none",color:WH,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>+ 신규</button>
         </div>
-        {filteredData.map(d => (
-          <div key={d.custId} onClick={() => setSel(d)}
-            style={{background:WH,borderRadius:16,padding:"14px 16px",marginBottom:10,border:"1px solid "+G2,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+        {filteredData.map(d => {
+          const custPhone = CUSTS.find(c=>c.name===d.custName)?.phone||'';
+          const lastUse = [...d.history].filter(h=>h.type==='use').sort((a,b)=>b.date.localeCompare(a.date))[0];
+          const dateStr = lastUse ? lastUse.date.slice(5).replace('-','.') : TODAY.slice(5).replace('-','.');
+          const svcStr = lastUse ? lastUse.memo.replace(/ 결제$/,'') : '';
+          const amtStr = lastUse ? lastUse.amount.toLocaleString() : '';
+          const smsBody = encodeURIComponent(`루미네일 (${d.custName}님) ${dateStr} ${svcStr} ${amtStr}원 사용  잔액 ${d.balance.toLocaleString()}원`);
+          return (
+          <div key={d.custId}
+            style={{background:WH,borderRadius:16,padding:"14px 16px",marginBottom:10,border:"1px solid "+G2,display:"flex",alignItems:"center",gap:12}}>
+            <div onClick={() => setSel(d)} style={{display:"flex",alignItems:"center",gap:12,flex:1,cursor:"pointer"}}>
             <div style={{width:44,height:44,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:P,flexShrink:0}}>{d.custName[0]}</div>
             <div style={{flex:1}}>
               <div style={{fontSize:14,fontWeight:700,color:DK,marginBottom:4}}>{d.custName}</div>
@@ -3066,9 +3074,18 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
               </div>
               <div style={{fontSize:11,color:G5}}>잔액 {d.balance.toLocaleString()}원 / 총 {d.total.toLocaleString()}원</div>
             </div>
-            <span style={{fontSize:15,fontWeight:800,color:P}}>›</span>
+            </div>
+            {custPhone && (
+              <a href={`sms:${custPhone.replace(/-/g,'')}` + `&body=${smsBody}`}
+                onClick={e=>e.stopPropagation()}
+                style={{width:36,height:36,borderRadius:"50%",background:PL,border:"1px solid "+PM,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,textDecoration:"none"}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </a>
+            )}
+            <span onClick={() => setSel(d)} style={{fontSize:15,fontWeight:800,color:P,cursor:"pointer"}}>›</span>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* 신규 발급 */}
@@ -3738,6 +3755,7 @@ export default function App({ session, onLogout }) {
   // ─────────────────────────────────────────────────
 
   const [showPay, setShowPay] = useState(null);
+  const [payDone, setPayDone] = useState(null);
   const [payMethod, setPayMethod] = useState("");
   const [payMemo, setPayMemo] = useState("");
   const [paidBks, setPaidBks] = useState(() => {
@@ -3869,6 +3887,14 @@ export default function App({ session, onLogout }) {
       saveCustomer(updated);
     }
 
+    if(payMethod==='prepaid'||payMethod==='prepaid_new') {
+      const custPhone = CUSTS.find(c=>c.name===showPay.name)?.phone||'';
+      const prevRec = prepaidData.find(d=>d.custName===showPay.name);
+      const prevBal = prevRec ? prevRec.balance : 0;
+      const newBal = payMethod==='prepaid' ? Math.max(0,prevBal-paidAmt) : Math.max(0,prevBal+charge+bonus-paidAmt);
+      const todayStr = TODAY.slice(5).replace('-','.' );
+      setPayDone({name:showPay.name, phone:custPhone, date:todayStr, svc:showPay.svc, amount:paidAmt, prepaidBal:newBal});
+    }
     setShowPay(null); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt("");
   }
 
@@ -3991,6 +4017,30 @@ export default function App({ session, onLogout }) {
       )}
 
       {modal && <BookModal initTime={modal.time} initSid={modal.sid} initDate={modal.date} onClose={() => setModal(null)} staff={staff} onAddStaff={addStaff} slotUnit={slotUnit} onSave={addBooking} onSaveNewCust={saveCustomer}/>}
+
+      {/* 선불권 잔액 문자 팝업 (결제 완료 직후) */}
+      {payDone && (
+        <div style={{position:"fixed",inset:0,zIndex:620,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div style={{width:"100%",maxWidth:430,background:WH,borderRadius:"22px 22px 0 0",padding:"28px 20px 48px"}}>
+            <div style={{textAlign:"center",marginBottom:20}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div style={{fontSize:16,fontWeight:800,color:DK}}>결제 완료!</div>
+              <div style={{fontSize:13,color:G5,marginTop:6}}>{payDone.name}님 · 선불권 잔액 <span style={{color:P,fontWeight:700}}>{payDone.prepaidBal.toLocaleString()}원</span></div>
+            </div>
+            {payDone.phone ? (
+              <a href={`sms:${payDone.phone.replace(/-/g,'')}&body=${encodeURIComponent(`루미네일 (${payDone.name}님) ${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용  잔액 ${payDone.prepaidBal.toLocaleString()}원`)}`}
+                onClick={() => setTimeout(()=>setPayDone(null),500)}
+                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px",borderRadius:14,background:PL,border:"1px solid "+PM,color:P,fontSize:14,fontWeight:700,marginBottom:10,textDecoration:"none"}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                잔액 안내 문자 발송
+              </a>
+            ) : null}
+            <button onClick={() => setPayDone(null)} style={{width:"100%",padding:"14px",borderRadius:14,background:G2,border:"none",color:G7,fontSize:14,fontWeight:600,cursor:"pointer"}}>닫기</button>
+          </div>
+        </div>
+      )}
 
       {/* 시술 기록 팝업 */}
       {showRecord && <TreatmentRecordModal bk={showRecord} onClose={() => setShowRecord(null)} onSave={saveRecord}/>}
