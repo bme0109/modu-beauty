@@ -1691,7 +1691,7 @@ function CalPage({ onDate }) {
                         const isWe = i%7===0||i%7===6;
                         return (
                           <div key={n} onClick={e=>{e.stopPropagation();setYr(popY);setMo(popM);setShowCalPop(false);}}
-                            style={{textAlign:"center",padding:"5px 2px",borderRadius:8,cursor:"pointer",background:isToday?P:"transparent",border:!isToday&&hasBk?"1px solid "+PM:"none"}}>
+                            style={{textAlign:"center",padding:"5px 2px",borderRadius:8,cursor:"pointer",background:isToday?P:"transparent",border:"none"}}>
                             <span style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?WH:isWe?RD:G7}}>{n}</span>
                             {hasBk && !isToday && <div style={{width:3,height:3,borderRadius:"50%",background:P,margin:"1px auto 0"}}/>}
                           </div>
@@ -1712,13 +1712,13 @@ function CalPage({ onDate }) {
           {Array.from({length:fd}).map((_,i) => <div key={"e"+i} style={{borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}/>)}
           {days.map(day => (
             <div key={day.d} onClick={() => onDate(day.ds)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"2px 1px",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
-              <span style={{fontSize:12,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.3}}>{day.d}</span>
-              {day.hol&&!day.isT&&<span style={{fontSize:6,color:RD,lineHeight:1.1,textAlign:"center"}}>{day.hol}</span>}
-              {day.bks.slice(0,2).map(b => (
-                <div key={b.id} style={{fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P}}>{b.name}</div>
+              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"1px 1px",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
+              <span style={{fontSize:11,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.2}}>{day.d}</span>
+              {day.hol&&!day.isT&&<span style={{fontSize:5,color:RD,lineHeight:1,textAlign:"center"}}>{day.hol}</span>}
+              {day.bks.slice(0,3).map(b => (
+                <div key={b.id} style={{fontSize:9,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.2}}>{b.name}</div>
               ))}
-              {day.bks.length>2 && <div style={{fontSize:8,color:day.isT?"rgba(255,255,255,0.6)":G5}}>+{day.bks.length-2}</div>}
+              {day.bks.length>3 && <div style={{fontSize:7,color:day.isT?"rgba(255,255,255,0.6)":G5,lineHeight:1}}>+{day.bks.length-3}</div>}
             </div>
           ))}
         </div>
@@ -3374,10 +3374,10 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
         </div>
       ))}
       {onImportCustomers && (
-        <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2}}>
+        <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2,borderLeft:"3px solid #03C75A"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-            <div style={{fontSize:13,fontWeight:600,color:DK}}>N예약 고객 가져오기</div>
-            <button onClick={()=>setShowImport(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:12,fontWeight:600}}>{showImport?"닫기":"열기"}</button>
+            <div style={{fontSize:13,fontWeight:700,color:"#03C75A"}}>N예약 고객 가져오기</div>
+            <button onClick={()=>setShowImport(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",color:"#03C75A",fontSize:12,fontWeight:600}}>{showImport?"닫기":"열기"}</button>
           </div>
           <div style={{fontSize:11,color:G5,marginBottom:showImport?10:0}}>네이버 예약관리 페이지 전체 복사 → 붙여넣기로 고객 자동 등록</div>
           {showImport && (
@@ -3400,10 +3400,10 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
         </div>
       )}
       {onImportBookings && (
-        <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2}}>
+        <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2,borderLeft:"3px solid #03C75A"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-            <div style={{fontSize:13,fontWeight:600,color:DK}}>N예약 일괄등록</div>
-            <button onClick={()=>{setShowBkImport(v=>!v);setBkImportResult(null);}} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:12,fontWeight:600}}>{showBkImport?"닫기":"열기"}</button>
+            <div style={{fontSize:13,fontWeight:700,color:"#03C75A"}}>N예약 일괄등록</div>
+            <button onClick={()=>{setShowBkImport(v=>!v);setBkImportResult(null);}} style={{background:"none",border:"none",cursor:"pointer",color:"#03C75A",fontSize:12,fontWeight:600}}>{showBkImport?"닫기":"열기"}</button>
           </div>
           <div style={{fontSize:11,color:G5,marginBottom:showBkImport?10:0}}>네이버 예약관리 목록 복사 → 붙여넣기로 예약 일괄 등록</div>
           {showBkImport && (
