@@ -1654,10 +1654,10 @@ function CalPage({ onDate }) {
   });
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 60px)",padding:"8px 10px 0"}}>
-      <div style={{background:WH,borderRadius:18,padding:"6px 11px 2px",border:"1px solid "+G2,flex:1,display:"flex",flexDirection:"column"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,flexShrink:0}}>
-          <button onClick={prevMo} style={{width:30,height:30,borderRadius:"50%",border:"1px solid "+G2,background:WH,cursor:"pointer",color:G7,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 118px)",padding:"4px 8px 0"}}>
+      <div style={{background:WH,borderRadius:16,padding:"4px 8px 2px",border:"1px solid "+G2,flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexShrink:0}}>
+          <button onClick={prevMo} style={{width:24,height:24,borderRadius:"50%",border:"1px solid "+G2,background:WH,cursor:"pointer",color:G7,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
           <div style={{position:"relative",display:"flex",alignItems:"center"}}>
             <span onClick={() => { setPopY(yr); setPopM(mo); setShowCalPop(v=>!v); }} style={{fontSize:15,fontWeight:800,color:DK,cursor:"pointer",padding:"2px 8px",borderRadius:8,userSelect:"none"}}>{yr}년 {mo}월 ▾</span>
             {showCalPop && (() => {
@@ -1703,22 +1703,22 @@ function CalPage({ onDate }) {
               );
             })()}
           </div>
-          <button onClick={nextMo} style={{width:30,height:30,borderRadius:"50%",border:"1px solid "+G2,background:WH,cursor:"pointer",color:G7,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          <button onClick={nextMo} style={{width:24,height:24,borderRadius:"50%",border:"1px solid "+G2,background:WH,cursor:"pointer",color:G7,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:3,flexShrink:0}}>
-          {DL.map((d,i) => <div key={d} style={{textAlign:"center",fontSize:10,fontWeight:600,color:i===0||i===6?RD:G5,paddingBottom:3}}>{d}</div>)}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:2,flexShrink:0}}>
+          {DL.map((d,i) => <div key={d} style={{textAlign:"center",fontSize:9,fontWeight:600,color:i===0||i===6?RD:G5,paddingBottom:1}}>{d}</div>)}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gridAutoRows:"1fr",gap:0,flex:1,border:"1px solid "+G2,borderRadius:6,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gridAutoRows:"minmax(0,1fr)",gap:0,flex:1,border:"1px solid "+G2,borderRadius:6,overflow:"hidden"}}>
           {Array.from({length:fd}).map((_,i) => <div key={"e"+i} style={{borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}/>)}
           {days.map(day => (
             <div key={day.d} onClick={() => onDate(day.ds)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0 1px",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
-              <span style={{fontSize:11,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.1}}>{day.d}</span>
+              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
+              <span style={{fontSize:10,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.0}}>{day.d}</span>
               {day.hol&&!day.isT&&<span style={{fontSize:5,color:RD,lineHeight:1,textAlign:"center"}}>{day.hol}</span>}
-              {day.bks.slice(0,3).map(b => (
-                <div key={b.id} style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.1}}>{b.name}</div>
+              {day.bks.slice(0,4).map(b => (
+                <div key={b.id} style={{fontSize:9,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.05,padding:"0 1px"}}>{b.name}</div>
               ))}
-              {day.bks.length>3 && <div style={{fontSize:7,color:day.isT?"rgba(255,255,255,0.6)":G5,lineHeight:1}}>+{day.bks.length-3}</div>}
+              {day.bks.length>4 && <div style={{fontSize:7,color:day.isT?"rgba(255,255,255,0.6)":G5,lineHeight:1}}>+{day.bks.length-4}</div>}
             </div>
           ))}
         </div>
