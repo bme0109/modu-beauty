@@ -578,14 +578,14 @@ function CustModal({ onSelect, onClose, onSaveNew }) {
       </div>
       {mode === "search" && (
         <div style={{flex:1,overflowY:"auto",padding:"0 18px 20px"}}>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름 또는 전화번호"
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름 또는 전화번호 뒤 4자리"
             style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box",marginBottom:10}}/>
           {filtered.map(c => (
             <div key={c.id} onClick={() => onSelect(c)}
               style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid "+G2,cursor:"pointer"}}>
               <div style={{width:38,height:38,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:P,flexShrink:0}}>{c.name[0]}</div>
               <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:DK}}>{c.name}</div>
+                <div style={{fontSize:14,fontWeight:700,color:DK}}>{c.name}{c.phone&&<span style={{fontSize:11,fontWeight:400,color:G5}}> ···{c.phone.replace(/-/g,"").slice(-4)}</span>}</div>
                 <div style={{fontSize:11,color:G5}}>{c.phone} · {c.visits}회</div>
               </div>
             </div>
@@ -644,6 +644,8 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   const [showC, setShowC] = useState(false);
   const [ct, setCt] = useState("");
   const [tagList, setTagList] = useState(["VIP","단골","예약금 필수","노쇼 주의","손톱 얇음","큐티클 예민"]);
+  const [showNaverPaste, setShowNaverPaste] = useState(false);
+  const [naverText, setNaverText] = useState("");
 
   function set(k, v) { setF(p => ({...p, [k]: v})); }
   function togTag(t) { setF(p => ({...p, tags: p.tags.includes(t) ? p.tags.filter(x=>x!==t) : [...p.tags,t]})); }
@@ -653,6 +655,42 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     if (!tagList.includes(t)) setTagList(p => [...p,t]);
     setF(p => ({...p, tags: p.tags.includes(t) ? p.tags : [...p.tags,t]}));
     setCt("");
+  }
+  function applyNaverPaste() {
+    const txt = naverText;
+    const nameM  = txt.match(/예약자명\s+(.+)/);
+    const phoneM = txt.match(/전화번호\s+([\d\-]+)/);
+    const dtM    = txt.match(/이용일시\s+(\d{4})\.(\d{2})\.(\d{2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
+    const lines  = txt.split('\n').map(l=>l.trim()).filter(Boolean);
+    const mi = lines.findIndex(l=>l.startsWith('선택메뉴'));
+    let svcName="", svcAmt="";
+    if(mi>=0){
+      for(const line of lines.slice(mi+1)){
+        if(line.startsWith('총 ')) continue;
+        const pm = line.match(/^(.+?)\s+([\d,]+)원$/);
+        if(pm){ svcName=pm[1].trim(); svcAmt=pm[2].replace(/,/g,''); break; }
+      }
+    }
+    const upd = {};
+    if(nameM)  upd.name  = nameM[1].trim();
+    if(phoneM) upd.phone = phoneM[1].trim();
+    if(dtM){
+      const [,yr,mo,dy,ap,hS,mS] = dtM;
+      upd.date = `${yr}-${mo}-${dy}`;
+      let h = Number(hS);
+      if(ap==='오후' && h<12) h+=12;
+      if(ap==='오전' && h===12) h=0;
+      upd.time = String(h).padStart(2,"0")+":"+mS;
+    }
+    if(svcName) upd.svc = svcName;
+    if(svcAmt)  upd.svcPrice = svcAmt;
+    if(upd.phone){
+      const ex = CUSTS.find(c=>c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
+      if(ex) upd.cid = String(ex.id);
+    }
+    setF(p=>({...p,...upd}));
+    setNaverText("");
+    setShowNaverPaste(false);
   }
 
   const _bToday = new Date();
@@ -685,10 +723,24 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
       <Sheet onClose={onClose} maxH="90vh">
         <div style={{overflowY:"auto",flex:1,padding:"0 18px 44px"}}>
           <div style={{width:34,height:4,background:G3,borderRadius:2,margin:"12px auto 16px"}}/>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showNaverPaste?10:18}}>
             <span style={{fontSize:16,fontWeight:800,color:DK}}>예약 등록</span>
-            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:G5}}>×</button>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button onClick={()=>setShowNaverPaste(v=>!v)}
+                style={{padding:"5px 11px",borderRadius:9,background:"#E8F9EE",border:"1px solid #03C75A",color:"#009444",fontSize:11,fontWeight:700,cursor:"pointer"}}>N예약</button>
+              <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:G5}}>×</button>
+            </div>
           </div>
+          {showNaverPaste && (
+            <div style={{marginBottom:14,background:OB,borderRadius:12,padding:"12px"}}>
+              <textarea value={naverText} onChange={e=>setNaverText(e.target.value)}
+                placeholder="네이버 톡톡 예약 메시지를 붙여넣으세요"
+                rows={5}
+                style={{width:"100%",border:"1.5px solid #03C75A",borderRadius:9,padding:"9px 11px",fontSize:12,color:DK,background:WH,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+              <button onClick={applyNaverPaste}
+                style={{width:"100%",marginTop:8,padding:"10px",borderRadius:10,background:"#03C75A",border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>적용</button>
+            </div>
+          )}
 
           {/* 담당자 */}
           <div style={{marginBottom:14}}>
@@ -2018,7 +2070,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
             <div style={{width:38,height:38,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:P,flexShrink:0}}>{c.name[0]}</div>
             <div style={{flex:1}}>
               <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2}}>
-                <span style={{fontSize:13,fontWeight:700,color:DK}}>{c.name}</span>
+                <span style={{fontSize:13,fontWeight:700,color:DK}}>{c.name}{c.phone&&<span style={{fontSize:11,fontWeight:400,color:G5}}> ···{c.phone.replace(/-/g,"").slice(-4)}</span>}</span>
                 {c.tags.slice(0,2).map(t => <span key={t} style={{fontSize:9,padding:"1px 5px",borderRadius:7,background:PL,color:P,fontWeight:600}}>{t}</span>)}
               </div>
               <span style={{fontSize:11,color:G5}}>{c.phone} · {c.visits}회</span>
