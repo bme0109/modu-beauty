@@ -1655,7 +1655,7 @@ function CalPage({ onDate }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 60px)",padding:"8px 10px 0"}}>
-      <div style={{background:WH,borderRadius:18,padding:"12px 11px 8px",border:"1px solid "+G2,flex:1,display:"flex",flexDirection:"column"}}>
+      <div style={{background:WH,borderRadius:18,padding:"6px 11px 2px",border:"1px solid "+G2,flex:1,display:"flex",flexDirection:"column"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,flexShrink:0}}>
           <button onClick={prevMo} style={{width:30,height:30,borderRadius:"50%",border:"1px solid "+G2,background:WH,cursor:"pointer",color:G7,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
           <div style={{position:"relative",display:"flex",alignItems:"center"}}>
@@ -1712,11 +1712,11 @@ function CalPage({ onDate }) {
           {Array.from({length:fd}).map((_,i) => <div key={"e"+i} style={{borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}/>)}
           {days.map(day => (
             <div key={day.d} onClick={() => onDate(day.ds)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"1px 1px",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
-              <span style={{fontSize:11,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.2}}>{day.d}</span>
+              style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0 1px",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
+              <span style={{fontSize:11,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.1}}>{day.d}</span>
               {day.hol&&!day.isT&&<span style={{fontSize:5,color:RD,lineHeight:1,textAlign:"center"}}>{day.hol}</span>}
               {day.bks.slice(0,3).map(b => (
-                <div key={b.id} style={{fontSize:9,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.2}}>{b.name}</div>
+                <div key={b.id} style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.1}}>{b.name}</div>
               ))}
               {day.bks.length>3 && <div style={{fontSize:7,color:day.isT?"rgba(255,255,255,0.6)":G5,lineHeight:1}}>+{day.bks.length-3}</div>}
             </div>
@@ -1746,10 +1746,12 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
   const [naverImportText, setNaverImportText] = useState("");
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [sortAlpha, setSortAlpha] = useState(false);
 
-  const filtered = custs.filter(c =>
-    c.name.includes(q) || c.phone.replace(/-/g,"").includes(q.replace(/-/g,""))
-  );
+  const filtered = custs
+    .filter(c => c.name.includes(q) || c.phone.replace(/-/g,"").includes(q.replace(/-/g,"")))
+    .slice()
+    .sort((a,b) => sortAlpha ? a.name.localeCompare(b.name,"ko") : 0);
 
   function parseNaverText(txt) {
     const STATUS = new Set(["완료","취소","확정","대기","노쇼","상태","예약자","전화번호"]);
@@ -2115,7 +2117,13 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
             style={{padding:"8px 13px",borderRadius:10,background:P,border:"none",color:WH,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>+ 신규</button>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
-          <div style={{fontSize:10,color:G5}}>총 {custs.length}명</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={{fontSize:10,color:G5}}>총 {custs.length}명</div>
+            <button onClick={()=>setSortAlpha(v=>!v)}
+              style={{padding:"2px 8px",borderRadius:7,background:sortAlpha?P:WH,border:"1px solid "+(sortAlpha?P:G2),color:sortAlpha?WH:G5,fontSize:10,fontWeight:600,cursor:"pointer"}}>
+              가나다순
+            </button>
+          </div>
           <button onClick={()=>{setShowNaverImport(v=>!v);setImportResult(null);}}
             style={{padding:"3px 9px",borderRadius:8,background:showNaverImport?G2:WH,border:"1px solid "+G2,color:G7,fontSize:11,fontWeight:600,cursor:"pointer"}}>
             N 고객 가져오기
