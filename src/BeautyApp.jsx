@@ -25,7 +25,7 @@ let OR  = "#F472B6"; // 결제완료 핑크 포인트
 let ORL = "#FDF0F7"; // 결제완료 연한 핑크 배경
 
 const LIGHT={P:"#7C6BC4",PL:"#EDE8F8",PM:"#9B8ED4",PS:"#F5F3FC",BG:"#F7F5FD",G2:"#EAE6F4",G3:"#D8D2EC",G5:"#9E98B8",G7:"#524E6A",DK:"#221D40",WH:"#FFFFFF",RD:"#E05C5C",GR:"#03C75A",GRL:"#E8F9EF",OB:"#EFECF8",OS:"#E5E1F2",OR:"#F472B6",ORL:"#FDF0F7"};
-const DARK ={P:"#2DD4BF",PL:"#0E2628",PM:"#1AA8A0",PS:"#112020",BG:"#0D1A1C",G2:"#1E3436",G3:"#253E40",G5:"#7BA8A4",G7:"#B0D4D0",DK:"#E8F5F4",WH:"#162628",RD:"#FB7185",GR:"#F472B6",GRL:"#2D1535",OB:"#0A1614",OS:"#081210",OR:"#C2006E",ORL:"#FFDDF5E6"};
+const DARK ={P:"#2DFFC7",PL:"#0E2628",PM:"#1EC9A8",PS:"#112020",BG:"#0D1A1C",G2:"#1E3436",G3:"#253E40",G5:"#7BA8A4",G7:"#B0D4D0",DK:"#E8F5F4",WH:"#162628",RD:"#FF4D8D",GR:"#8B5CF6",GRL:"#1E1438",OB:"#0A1614",OS:"#081210",OR:"#FF4D8D",ORL:"#2A1020"};
 
 function applyTheme(dark) {
   const t = dark ? DARK : LIGHT;
@@ -356,10 +356,10 @@ function PrepaidChargeForm({ amount, setAmount, chargeMethod, setChargeMethod, b
   const total = amt + bonus;
 
   const methods = [
-    {v:"card",    l:"카드",    bg:"#EEF2FF", ac:"#6672D0", tx:"#4A56B0"},
-    {v:"cash",    l:"현금",    bg:"#FFF5ED", ac:"#E87940", tx:"#C0551A"},
-    {v:"naverpay",l:"N페이",  bg:"#E8F9EE", ac:"#03C75A", tx:"#009444"},
-    {v:"transfer",l:"계좌이체",bg:"#F0FAFB", ac:"#3BAEAA", tx:"#1A8A86"},
+    {v:"card",    l:"카드",    bg:"#EEE8FB", ac:"#9B7EDF", tx:"#5933B5"},
+    {v:"cash",    l:"현금",    bg:"#FFF0E8", ac:"#F4976C", tx:"#C0572A"},
+    {v:"naverpay",l:"N페이",  bg:"#E5F8F1", ac:"#5DC4A2", tx:"#2D8A62"},
+    {v:"transfer",l:"계좌이체",bg:"#E7F4FB", ac:"#6AB8D6", tx:"#2878A0"},
   ];
 
   return (
@@ -795,10 +795,10 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   }
 
   const payOpts = [
-    {v:"naver_paid",l:"N결제",  bg:"#E8F9EE", ac:"#03C75A", tx:"#009444"},
-    {v:"transfer",  l:"계좌이체",bg:"#F0FAFB", ac:"#3BAEAA", tx:"#1A8A86"},
-    {v:"cash",      l:"현금",   bg:"#FFF5ED", ac:"#E87940", tx:"#C0551A"},
-    {v:"etc",       l:"기타",   bg:"#F3F4F7", ac:"#8890A8", tx:"#6B7385"},
+    {v:"naver_paid",l:"N결제",  bg:"#E5F8F1", ac:"#5DC4A2", tx:"#2D8A62"},
+    {v:"transfer",  l:"계좌이체",bg:"#E7F4FB", ac:"#6AB8D6", tx:"#2878A0"},
+    {v:"cash",      l:"현금",   bg:"#FFF0E8", ac:"#F4976C", tx:"#C0572A"},
+    {v:"etc",       l:"기타",   bg:"#F0EEF8", ac:"#9890C5", tx:"#504888"},
   ];
 
   return (
@@ -1403,12 +1403,15 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
                                 setDragBk(bk);
                                 setDragTime(bk.time);
                                 setDragDate(cur);
+                                setDragSid(bk.sid);
                                 const origTime = bk.time;
                                 const origDate = cur;
+                                const origSid  = bk.sid;
                                 dragMoveRef.current = ev => {
                                   ev.preventDefault();
-                                  const dy = ev.touches[0].clientY - dragStartYRef.current;
-                                  const dx = ev.touches[0].clientX - dragStartXRef.current;
+                                  const touch = ev.touches[0];
+                                  const dy = touch.clientY - dragStartYRef.current;
+                                  // 세로: 시간 변경
                                   const slots = Math.round(dy / SLOT_H_DYN);
                                   const [oh,om] = origTime.split(":").map(Number);
                                   const total = Math.max(9*60, Math.min(21*60, oh*60+om+slots*DISPLAY_UNIT));
@@ -1416,24 +1419,36 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
                                   const nh = String(Math.floor(snapped/60)).padStart(2,"0");
                                   const nm = String(snapped%60).padStart(2,"0");
                                   setDragTime(nh+":"+nm);
-                                  const dayShift = Math.round(dx / 90);
-                                  const nd = new Date(origDate+"T00:00:00");
-                                  nd.setDate(nd.getDate()+dayShift);
-                                  const nds = nd.getFullYear()+"-"+String(nd.getMonth()+1).padStart(2,"0")+"-"+String(nd.getDate()).padStart(2,"0");
-                                  setDragDate(nds);
+                                  // 가로: zone 기반 (마우스와 동일)
+                                  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                  const zone = el?.closest('[data-zone]')?.dataset.zone;
+                                  if(zone === 'weekheader') {
+                                    const dateEl = el?.closest('[data-date]');
+                                    if(dateEl) setDragDate(dateEl.dataset.date);
+                                    setDragSid(origSid);
+                                  } else {
+                                    const sidEl = el?.closest('[data-sid]');
+                                    if(sidEl) setDragSid(Number(sidEl.dataset.sid));
+                                    setDragDate(origDate);
+                                  }
                                 };
                                 dragEndRef.current = () => {
                                   setDragBk(null);
                                   setDragTime(t => {
                                     setDragDate(d => {
-                                      const tChanged = t && t!==origTime;
-                                      const dChanged = d && d!==origDate;
-                                      if(tChanged||dChanged) {
-                                        const upd = {};
-                                        if(tChanged) upd.time = t;
-                                        if(dChanged) upd.date = d;
-                                        setTimeout(() => setDragConfirm({bk,origDate,origTime,origSid:bk.sid,newDate:d||origDate,newTime:t||origTime,newSid:bk.sid,upd}), 0);
-                                      }
+                                      setDragSid(s => {
+                                        const tChanged = t && t!==origTime;
+                                        const dChanged = d && d!==origDate;
+                                        const sChanged = s && s!==origSid;
+                                        if(tChanged||dChanged||sChanged) {
+                                          const upd = {};
+                                          if(tChanged) upd.time = t;
+                                          if(dChanged) upd.date = d;
+                                          if(sChanged) upd.sid = s;
+                                          setTimeout(() => setDragConfirm({bk,origDate,origTime,origSid,newDate:d||origDate,newTime:t||origTime,newSid:s||origSid,upd}), 0);
+                                        }
+                                        return null;
+                                      });
                                       return null;
                                     });
                                     return null;
@@ -3877,19 +3892,11 @@ export default function App({ session, onLogout }) {
     <div style={{fontFamily:"'Noto Sans KR','Apple SD Gothic Neo',sans-serif",background:BG,minHeight:"100vh",width:"100%",maxWidth:430,margin:"0 auto",paddingBottom:72,overflowX:"hidden",boxSizing:"border-box"}}>
       {tab!=="timetable" && (
         <div style={{position:"sticky",top:0,zIndex:50,background:WH,borderBottom:"1px solid "+G2,padding:"13px 18px 11px"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={() => setMenu(true)} style={{background:"none",border:"none",cursor:"pointer",padding:3,display:"flex",flexDirection:"column",gap:4}}>
-                <div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:13,height:2,background:DK,borderRadius:2}}/>
-              </button>
-              <button onClick={() => setIsDark(d => !d)} style={{background:"none",border:"none",cursor:"pointer",padding:3,display:"flex",alignItems:"center"}}>
-                {isDark
-                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={DK} strokeWidth="1.8"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G7} strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                }
-              </button>
-            </div>
-            <span style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:P,letterSpacing:-0.5}}>{shopName}</span>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative"}}>
+            <button onClick={() => setMenu(true)} style={{background:"none",border:"none",cursor:"pointer",padding:3,display:"flex",flexDirection:"column",gap:4}}>
+              <div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:13,height:2,background:DK,borderRadius:2}}/>
+            </button>
+            <span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:P,letterSpacing:-0.5,whiteSpace:"nowrap",pointerEvents:"none"}}>{shopName}</span>
             <div style={{width:26}}/>
           </div>
         </div>
@@ -3935,7 +3942,15 @@ export default function App({ session, onLogout }) {
           <div onClick={() => setMenu(false)} style={{position:"fixed",inset:0,background:"rgba(20,16,50,0.3)",zIndex:200}}/>
           <div style={{position:"fixed",top:0,left:0,width:255,height:"100vh",background:WH,zIndex:201,padding:"50px 0 36px",display:"flex",flexDirection:"column",boxShadow:"5px 0 28px "+P+"20"}}>
             <div style={{padding:"0 24px 18px",borderBottom:"1px solid "+G2}}>
-              <p style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:P,margin:0}}>{shopName}</p>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <p style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:P,margin:0}}>{shopName}</p>
+                <button onClick={() => setIsDark(d => !d)} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center"}}>
+                  {isDark
+                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={DK} strokeWidth="1.8"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  }
+                </button>
+              </div>
               <p style={{fontSize:10,color:G5,margin:"3px 0 0"}}>CRM v1.0</p>
             </div>
             <div style={{flex:1,padding:"6px 0",overflowY:"auto"}}>
@@ -4062,14 +4077,21 @@ export default function App({ session, onLogout }) {
             {/* 결제수단 */}
             <div style={{fontSize:11,color:G5,fontWeight:600,marginBottom:8}}>결제수단</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
-              {[
-                {v:"naverpay",l:"N페이",bg:"#E8F9EE",ac:"#03C75A",tx:"#009444"},
-                {v:"card",l:"카드",bg:"#EEF2FF",ac:"#6672D0",tx:"#4A56B0"},
-                {v:"cash",l:"현금",bg:"#FFF5ED",ac:"#E87940",tx:"#C0551A"},
-                {v:"prepaid",l:"선불권 사용",bg:ORL,ac:OR,tx:OR},
-                {v:"prepaid_new",l:"선불권 충전",bg:"#EDFAF4",ac:"#1AAD6A",tx:"#12804E"},
-                {v:"etc",l:"기타",bg:"#F3F4F7",ac:"#8890A8",tx:"#6B7385"},
-              ].map(o => {
+              {(isDark ? [
+                {v:"naverpay",   l:"N페이",     bg:"#0C2820", ac:"#2DFFC7", tx:"#72FFE0"},
+                {v:"card",       l:"카드",      bg:"#1A1040", ac:"#A87FFF", tx:"#C8AEFF"},
+                {v:"cash",       l:"현금",      bg:"#2C1508", ac:"#FF9B6A", tx:"#FFBE98"},
+                {v:"prepaid",    l:"선불권 사용", bg:ORL,       ac:OR,        tx:OR},
+                {v:"prepaid_new",l:"선불권 충전", bg:"#092820", ac:"#2DE8B8", tx:"#72FFD8"},
+                {v:"etc",        l:"기타",      bg:"#18142A", ac:"#8880D0", tx:"#B0ACEC"},
+              ] : [
+                {v:"naverpay",   l:"N페이",     bg:"#E5F8F1", ac:"#5DC4A2", tx:"#2D8A62"},
+                {v:"card",       l:"카드",      bg:"#EEE8FB", ac:"#9B7EDF", tx:"#5933B5"},
+                {v:"cash",       l:"현금",      bg:"#FFF0E8", ac:"#F4976C", tx:"#C0572A"},
+                {v:"prepaid",    l:"선불권 사용", bg:ORL,       ac:OR,        tx:OR},
+                {v:"prepaid_new",l:"선불권 충전", bg:"#E5F8F4", ac:"#5DC4B0", tx:"#2A8070"},
+                {v:"etc",        l:"기타",      bg:"#F0EEF8", ac:"#9890C5", tx:"#504888"},
+              ]).map(o => {
                 const sel=payMethod===o.v;
                 return (
                   <button key={o.v} onClick={() => setPayMethod(o.v)}
