@@ -2561,7 +2561,7 @@ function SalesPage({ paidBks, onDeletePaid }) {
 }
 
 // ── 홈 페이지 ─────────────────────────────────────────
-function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onDelete }) {
+function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onDelete, onDeletePaid }) {
   const [fs, setFs] = useState(null);
   const [showSales, setShowSales] = useState(null);
   const [showBk, setShowBk] = useState(null);
@@ -2742,6 +2742,10 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                             style={{padding:"5px 10px",borderRadius:8,background:PL,border:"1px solid "+PM,color:P,fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>
                             문자
                           </button>
+                        )}
+                        {onDeletePaid && (
+                          <button onClick={()=>{if(window.confirm("이 결제 내역을 삭제할까요?"))onDeletePaid(bkId);}}
+                            style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>
                         )}
                       </div>
                     );
@@ -4152,7 +4156,7 @@ export default function App({ session, onLogout }) {
       )}
 
       <div>
-        {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }}/>}
+        {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;}); }}/>}
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
@@ -4487,6 +4491,8 @@ export default function App({ session, onLogout }) {
     </div>
   );
 }
+
+
 
 
 
