@@ -683,34 +683,57 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   function applyNaverPaste() {
     const txt = naverText;
     const ANNOUNCE_P = ['예약 변경 및 취소 안내','네이버 예약 시간 변동 안내'];
-    // 예약자명(톡톡) or 예약자(상세보기)
-    const nameM  = txt.match(/예약자명?[\s\t:]+([^\n\t]+)/);
-    const phoneM = txt.match(/전화번호[\s\t:]+([\d\-]+)/);
-    // 날짜: 2026.06.30.(화) or 2026. 6. 30.(화) 모두 허용
-    const dtM    = txt.match(/이용일시[\s\t:]+(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
-    const depM   = txt.match(/결제완료\s*([\d,]+)원/);
-    const lines  = txt.split('\n').map(l=>l.trim()).filter(Boolean);
-    // 톡톡 형식: 선택메뉴 섹션
+    const lines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
+    // 이름: "예약자명 심문경" 형식
+    const nameM = txt.match(/예약자명?[\s\t:]+([^\n\t]+)/);
+    // 전화번호: 레이블 or 직접 패턴
+    const phoneM = txt.match(/전화번호[\s\t:]+([\d\-]+)/) || txt.match(/(010-\d{4}-\d{4})/);
+    // 날짜: 이용일시 레이블 없어도 패턴 직접 탐색
+    const dtM = txt.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
+    // 총 금액
+    const totalM = txt.match(/총\s*([\d,]+)원/);
+    // 선택메뉴 섹션 - 멀티라인 방식
     const mi = lines.findIndex(l=>l.startsWith('선택메뉴'));
     let svcName="", svcAmt="";
     if(mi>=0){
       for(const line of lines.slice(mi+1)){
-        if(line.startsWith('총 ')) continue;
+        if(/^총\s/.test(line)) continue;
         if(ANNOUNCE_P.some(a=>line.includes(a))) continue;
         const pm = line.match(/^(.+?)\s+([\d,]+)원$/);
         if(pm){ svcName=pm[1].trim(); svcAmt=pm[2].replace(/,/g,''); break; }
       }
     }
-    // 상세보기 형식: 매장방문결제/선결제 필드 (+ 구분)
+    // 선택메뉴가 한 줄에 모여 있는 경우 (" + "로 구분)
+    if(!svcName && mi>=0){
+      const inline = lines[mi].replace(/^선택메뉴[\s\t]*/,'').replace(/총\s*[\d,]+원/g,'');
+      const inlineParts = inline.split(' + ').map(s=>s.trim()).filter(s=>s && !ANNOUNCE_P.some(a=>s.includes(a)));
+      for(const p of inlineParts){
+        const pm = p.match(/^(.+?)\s+([\d,]+)원$/);
+        if(pm){ svcName=pm[1].trim(); svcAmt=pm[2].replace(/,/g,''); break; }
+      }
+    }
+    // 매장방문결제/선결제 필드 (상세보기 형식, 네이버페이는 결제수단이라 제외)
     if(!svcName){
-      const payLineM = txt.match(/(?:매장방문결제|선결제|네이버페이)[\s\t:]+(.+)/);
+      const payLineM = txt.match(/(?:매장방문결제|선결제)[\s\t:]+(.+)/);
       if(payLineM){
         const parts = payLineM[1].split('+').map(s=>s.trim()).filter(s=>s && !ANNOUNCE_P.some(a=>s.includes(a)));
         if(parts.length>0) svcName = parts.join(', ');
       }
     }
+    // 앞의 "+ " 제거 (멀티라인 복사 시 마지막 항목 앞에 붙음)
+    if(svcName.startsWith('+ ')) svcName = svcName.slice(2).trim();
+    else if(svcName.startsWith('+')) svcName = svcName.slice(1).trim();
     const upd = {};
-    if(nameM)  upd.name  = nameM[1].trim();
+    if(nameM) upd.name = nameM[1].trim();
+    // 레이블 없이 이름 값만 복사한 경우: 전화번호 이전 줄에서 한글 이름 탐색
+    if(!upd.name){
+      const phoneIdx = lines.findIndex(l=>/^010-/.test(l) || /^전화번호/.test(l));
+      if(phoneIdx > 0){
+        for(let i=phoneIdx-1; i>=Math.max(0,phoneIdx-3); i--){
+          if(/^[가-힣]{2,5}$/.test(lines[i])){ upd.name=lines[i]; break; }
+        }
+      }
+    }
     if(phoneM) upd.phone = phoneM[1].trim();
     if(dtM){
       const [,yr,mo,dy,ap,hS,mS] = dtM;
@@ -722,10 +745,14 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     }
     if(svcName) upd.svc = svcName;
     if(svcAmt)  upd.svcPrice = svcAmt;
-    // 결제완료 있으면 naver_paid(N+예), 매장방문이면 naver(N만)
-    if(depM){ upd.dep='naver_paid'; upd.depAmt=depM[1].replace(/,/g,''); }
-    else if(txt.includes('매장방문결제')) upd.dep='naver';
-    else upd.dep='naver_paid';
+    if(txt.includes('결제완료')){
+      upd.dep='naver_paid';
+      upd.depAmt = totalM ? totalM[1].replace(/,/g,'') : svcAmt;
+    } else if(txt.includes('매장방문결제')) {
+      upd.dep='naver';
+    } else {
+      upd.dep='naver_paid';
+    }
     if(upd.name || upd.phone){
       const ex = CUSTS.find(c=>c.phone && upd.phone && c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
       if(ex){
