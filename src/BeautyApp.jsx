@@ -3113,7 +3113,7 @@ function ShopNameSetting({ shopName, onUpdate }) {
   );
 }
 
-function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers }) {
+function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers, onImportBookings }) {
   const [sub, setSub] = useState(initialSub||null);
   const [sl, setSl] = useState(staff);
   const [newN, setNewN] = useState("");
@@ -3123,6 +3123,11 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [showBkImport, setShowBkImport] = useState(false);
+  const [naverBkText, setNaverBkText] = useState("");
+  const [bkImporting, setBkImporting] = useState(false);
+  const [bkImportResult, setBkImportResult] = useState(null);
+  const [bkImportSid, setBkImportSid] = useState(() => staff[0]?.id ?? 0);
 
   function parseNaverText(txt) {
     const STATUS = new Set(["완료","취소","확정","대기","노쇼","상태","예약자","전화번호"]);
@@ -3161,6 +3166,77 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
     setImporting(false);
     setImportResult(added);
     setNaverImportText("");
+  }
+
+  function parseNaverBookings(txt) {
+    const ANNOUNCE = ['예약 변경 및 취소 안내','네이버 예약 시간 변동 안내'];
+    const STATUS = new Set(["완료","취소","확정","대기","노쇼"]);
+    const lines = txt.split('\n').map(l=>l.split('\t')[0].trim()).filter(Boolean);
+    const results = [];
+    for(let i=0; i<lines.length; i++) {
+      const phoneM = lines[i].match(/^(010-\d{4}-\d{4})/);
+      if(!phoneM) continue;
+      const phone = phoneM[1];
+      let name = '';
+      for(let j=i-1; j>=Math.max(0,i-4); j--) {
+        const cand = lines[j];
+        if(STATUS.has(cand) || /^\d/.test(cand) || cand.includes('-') || cand.length<2 || cand.length>15) continue;
+        if(/[가-힣A-Za-z]/.test(cand)) { name=cand; break; }
+      }
+      if(!name) continue;
+      let date='', time='', svc='', depAmt=20000;
+      let dateFound=false;
+      for(let j=i+1; j<Math.min(lines.length,i+12); j++) {
+        const line = lines[j];
+        if(/^010-\d{4}-\d{4}/.test(line)) break;
+        if(!dateFound) {
+          const dtM = line.match(/^(\d{2,4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\([가-힣]+\)\s*(오전|오후)\s*(\d{1,2}):(\d{2})/);
+          if(dtM) {
+            const [,yr,mo,dy,ap,hS,mS] = dtM;
+            const fullYr = yr.length<=2 ? '20'+yr : yr;
+            date = fullYr+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0');
+            let h=Number(hS);
+            if(ap==='오후'&&h<12) h+=12;
+            if(ap==='오전'&&h===12) h=0;
+            time = String(h).padStart(2,'0')+':'+mS;
+            dateFound=true;
+          }
+        } else {
+          if(line==='루미네일'||STATUS.has(line)||line==='-') continue;
+          const depM = line.match(/결제완료([\d,]+)원/);
+          if(depM) { depAmt=parseInt(depM[1].replace(/,/g,'')); continue; }
+          if(/^결제/.test(line)||/^\d{2,4}\.\s*\d/.test(line)) break;
+          if(!svc) {
+            const items = line.split(',').map(s=>s.trim()).filter(s=>s.length>0&&!ANNOUNCE.some(a=>s.includes(a)));
+            if(items.length>0) svc=items.join(', ');
+          }
+        }
+      }
+      if(date&&name) results.push({name,phone,date,time,svc:svc||'시술 미정',depAmt});
+    }
+    return results;
+  }
+
+  async function importBookings() {
+    if(!onImportBookings) return;
+    const parsed = parseNaverBookings(naverBkText);
+    setBkImporting(true);
+    let added=0;
+    for(const bk of parsed) {
+      const ex = CUSTS.find(c=>c.phone.replace(/-/g,'')===bk.phone.replace(/-/g,''));
+      if(!ex) {
+        const newC={id:Date.now()+added,name:bk.name,phone:bk.phone,birth:'',memo:'',tags:[],visits:0,revenue:0};
+        CUSTS=[...CUSTS,newC];
+        if(onImportCustomers) await onImportCustomers(newC);
+      }
+      const sid=Number(bkImportSid);
+      const newBk={id:Date.now()+added+1,sid,date:bk.date,time:bk.time,mins:60,name:bk.name,phone:bk.phone,svc:bk.svc,price:0,dep:'naver_paid',depAmt:bk.depAmt,memo:''};
+      await onImportBookings(newBk);
+      added++;
+    }
+    setBkImporting(false);
+    setBkImportResult(added);
+    setNaverBkText('');
   }
   const [sh, setSh] = useState("10:00");
   const [eh, setEh] = useState("20:00");
@@ -3635,7 +3711,7 @@ export default function App({ session, onLogout }) {
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>removeBooking(b.firestoreId)} onDeleteCust={deleteCustomer}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
-        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer}/>}
+        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking}/>}
       </div>
 
       {/* 하단 탭 */}
