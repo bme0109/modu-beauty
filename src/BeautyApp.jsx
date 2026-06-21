@@ -2754,47 +2754,86 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
       )}
       {showSales === "month" && (() => {
         const monthEntries = Object.entries(paidBks).filter(([_,p])=>p.date&&p.date.slice(0,7)===TODAY.slice(0,7));
-        const methodOrder = ["카드","현금","N페이","계좌이체","선불권 충전","선불권 사용","기타"];
-        const byMethod = monthEntries.reduce((acc,[id,p])=>{const m=p.method||"기타";if(!acc[m])acc[m]=[];acc[m].push([id,p]);return acc;},{});
-        const methodKeys = [...new Set([...methodOrder.filter(m=>byMethod[m]),...Object.keys(byMethod).filter(m=>!methodOrder.includes(m))])];
+        const totalAmt = monthEntries.reduce((s,[_,p])=>s+(p.amount||p.paidAmt||0),0);
+        const methodMap = {};
+        monthEntries.forEach(([_,p])=>{
+          const m = p.method&&p.method.includes("선불권 충전")?"선불권 충전":p.method||"기타";
+          if(!methodMap[m]) methodMap[m]={r:0,c:0,list:[]};
+          methodMap[m].r+=(p.amount||p.paidAmt||0); methodMap[m].c+=1; methodMap[m].list.push([_,p]);
+        });
+        const byMethod = Object.entries(methodMap).sort((a,b)=>b[1].r-a[1].r);
+        const COLORS=[P,OR,GR,"#FF9500","#5856D6","#FF6B6B"];
+        const r=50,cx=65,cy=65,circ=2*Math.PI*r;
+        let cumAngle=-90;
         return (
           <Sheet onClose={() => setShowSales(null)} maxH="85vh">
             <SheetHandle title="이번달 매출 상세" onClose={() => setShowSales(null)}/>
             <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
-              <div style={{background:PS,borderRadius:14,padding:"14px 16px",marginBottom:14}}>
-                <div style={{fontSize:11,color:G5,marginBottom:4}}>이번달 총 매출</div>
-                <div style={{fontSize:22,fontWeight:800,color:P}}>{mrev.toLocaleString()}원</div>
-                <div style={{marginTop:8,height:3,background:G2,borderRadius:2}}>
-                  <div style={{width:Math.min(mrev/8000000*100,100).toFixed(0)+"%",height:"100%",background:P,borderRadius:2}}/>
+              <div style={{background:P,borderRadius:16,padding:"18px 20px",marginBottom:16,color:WH}}>
+                <div style={{fontSize:11,opacity:0.8,marginBottom:6}}>{new Date().getMonth()+1}월 전체 · {monthEntries.length}건</div>
+                <div style={{fontSize:26,fontWeight:800}}>{totalAmt.toLocaleString()}원</div>
+                <div style={{marginTop:10,height:3,background:"rgba(255,255,255,0.25)",borderRadius:2}}>
+                  <div style={{width:Math.min(totalAmt/8000000*100,100).toFixed(0)+"%",height:"100%",background:"rgba(255,255,255,0.7)",borderRadius:2}}/>
                 </div>
-                <div style={{fontSize:10,color:G5,marginTop:4}}>목표 8,000,000원</div>
+                <div style={{fontSize:10,opacity:0.6,marginTop:4}}>목표 8,000,000원</div>
               </div>
-              {methodKeys.map(method => {
-                const entries = byMethod[method]||[];
-                const total = entries.reduce((s,[_,p])=>s+(p.amount||p.paidAmt||0),0);
-                return (
-                  <div key={method} style={{marginBottom:14}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                      <span style={{fontSize:12,fontWeight:700,color:G5}}>{method}</span>
-                      <span style={{fontSize:12,fontWeight:700,color:DK}}>{total.toLocaleString()}원</span>
-                    </div>
-                    {entries.sort(([_,a],[__,b])=>(b.date||'').localeCompare(a.date||'')).map(([bkId,p]) => {
-                      const b = BKS.find(x=>String(x.id)===String(bkId)||String(x.firestoreId)===String(bkId));
-                      const name = b?.name||"고객";
-                      const dStr = (p.date||'').slice(5).replace('-','.');
-                      return (
-                        <div key={bkId} style={{display:"flex",alignItems:"center",padding:"9px 14px",borderRadius:11,border:"1px solid "+G2,marginBottom:5,background:WH,gap:8}}>
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:13,fontWeight:700,color:DK}}>{name}</div>
-                            <div style={{fontSize:11,color:G5}}>{dStr} · {b?.svc||""}</div>
+              <div style={{background:WH,borderRadius:14,padding:"14px",border:"1px solid "+G2,marginBottom:14}}>
+                <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:12}}>결제수단별</div>
+                {byMethod.length===0
+                  ? <div style={{fontSize:12,color:G5,textAlign:"center",padding:"8px 0"}}>내역 없음</div>
+                  : (
+                    <div style={{display:"flex",alignItems:"center",gap:14}}>
+                      <svg width={130} height={130} style={{flexShrink:0}}>
+                        <circle cx={cx} cy={cy} r={r} fill="none" stroke={G2} strokeWidth={20}/>
+                        {byMethod.map(([m,v],i)=>{
+                          const pct=totalAmt>0?v.r/totalAmt:0;
+                          const dash=pct*circ;
+                          const sa=cumAngle;
+                          cumAngle+=pct*360;
+                          return <circle key={m} cx={cx} cy={cy} r={r} fill="none" stroke={COLORS[i%COLORS.length]} strokeWidth={20} strokeDasharray={`${dash} ${circ-dash}`} transform={`rotate(${sa} ${cx} ${cy})`}/>;
+                        })}
+                        <text x={cx} y={cy-5} textAnchor="middle" style={{fontSize:13,fontWeight:"bold",fill:DK}}>{totalAmt>=10000?(totalAmt/10000).toFixed(0)+"만":totalAmt.toLocaleString()}</text>
+                        <text x={cx} y={cy+11} textAnchor="middle" style={{fontSize:9,fill:G5}}>원</text>
+                      </svg>
+                      <div style={{flex:1}}>
+                        {byMethod.map(([m,v],i)=>(
+                          <div key={m} style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                            <div style={{width:9,height:9,borderRadius:"50%",background:COLORS[i%COLORS.length],flexShrink:0}}/>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:11,color:DK,fontWeight:600}}>{m}</div>
+                              <div style={{fontSize:10,color:G5}}>{v.c}건</div>
+                            </div>
+                            <span style={{fontSize:11,fontWeight:700,color:COLORS[i%COLORS.length]}}>{v.r.toLocaleString()}원</span>
                           </div>
-                          <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.amount||p.paidAmt||0).toLocaleString()}원</span>
-                        </div>
-                      );
-                    })}
+                        ))}
+                      </div>
+                    </div>
+                  )
+                }
+              </div>
+              {byMethod.map(([method,v],i)=>(
+                <div key={method} style={{marginBottom:14}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:COLORS[i%COLORS.length]}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:G5,flex:1}}>{method}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:DK}}>{v.r.toLocaleString()}원</span>
                   </div>
-                );
-              })}
+                  {v.list.sort(([_,a],[__,b])=>(b.date||'').localeCompare(a.date||'')).map(([bkId,p])=>{
+                    const b=BKS.find(x=>String(x.id)===String(bkId)||String(x.firestoreId)===String(bkId));
+                    const name=b?.name||"고객";
+                    const dStr=(p.date||'').slice(5).replace('-','.');
+                    return (
+                      <div key={bkId} style={{display:"flex",alignItems:"center",padding:"9px 14px",borderRadius:11,border:"1px solid "+G2,marginBottom:5,background:WH,gap:8}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:13,fontWeight:700,color:DK}}>{name}</div>
+                          <div style={{fontSize:11,color:G5}}>{dStr} · {b?.svc||""}</div>
+                        </div>
+                        <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.amount||p.paidAmt||0).toLocaleString()}원</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </Sheet>
         );
