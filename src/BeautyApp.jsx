@@ -3399,6 +3399,50 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
           )}
         </div>
       )}
+      {onImportBookings && (
+        <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:13,fontWeight:600,color:DK}}>N예약 일괄등록</div>
+            <button onClick={()=>{setShowBkImport(v=>!v);setBkImportResult(null);}} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:12,fontWeight:600}}>{showBkImport?"닫기":"열기"}</button>
+          </div>
+          <div style={{fontSize:11,color:G5,marginBottom:showBkImport?10:0}}>네이버 예약관리 목록 복사 → 붙여넣기로 예약 일괄 등록</div>
+          {showBkImport && (
+            <div>
+              <div style={{marginBottom:8}}>
+                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:4}}>담당 직원</div>
+                <select value={bkImportSid} onChange={e=>setBkImportSid(e.target.value)}
+                  style={{width:"100%",padding:"8px 10px",borderRadius:9,border:"1.5px solid "+G2,fontSize:12,color:DK,background:WH,outline:"none"}}>
+                  {staff.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <textarea value={naverBkText} onChange={e=>{setNaverBkText(e.target.value);setBkImportResult(null);}}
+                placeholder="네이버 예약관리에서 Ctrl+A 후 Ctrl+C, 여기에 붙여넣기"
+                rows={6}
+                style={{width:"100%",border:"1.5px solid #03C75A",borderRadius:9,padding:"9px 11px",fontSize:12,color:DK,background:WH,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"inherit",marginBottom:8}}/>
+              {naverBkText && (() => {
+                const bks = parseNaverBookings(naverBkText);
+                return (
+                  <div style={{fontSize:11,color:G5,marginBottom:8}}>
+                    <b style={{color:P}}>{bks.length}건</b> 인식됨
+                    <div style={{marginTop:4,maxHeight:110,overflowY:"auto"}}>
+                      {bks.map((bk,idx)=>(
+                        <div key={idx} style={{fontSize:10,color:G7,padding:"2px 0",borderBottom:"1px solid "+G2}}>
+                          {bk.date} {bk.time} {bk.name} — {bk.svc}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+              {bkImportResult!==null && <div style={{fontSize:12,color:"#009444",fontWeight:600,marginBottom:8}}>✓ {bkImportResult}건 등록 완료</div>}
+              <button onClick={importBookings} disabled={bkImporting||!naverBkText}
+                style={{width:"100%",padding:"10px",borderRadius:10,background:bkImporting||!naverBkText?G2:P,border:"none",color:bkImporting||!naverBkText?G5:WH,fontSize:13,fontWeight:700,cursor:bkImporting||!naverBkText?"default":"pointer"}}>
+                {bkImporting?"등록 중...":"예약 등록"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
