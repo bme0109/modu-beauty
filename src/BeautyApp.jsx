@@ -2070,6 +2070,25 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
                 </div>
               ))}
             </div>
+            {(()=>{
+              const prepaidRec=(prepaidData||[]).find(d=>d.custName===sel.name);
+              const prepaidBal=prepaidRec?(prepaidRec.balance||0):0;
+              if(!prepaidBal) return null;
+              const lastPaid=hist.filter(b=>paidBks&&paidBks[b.id]).sort((a,b)=>b.date.localeCompare(a.date))[0];
+              const td=new Date();
+              const dateStr=lastPaid?lastPaid.date.slice(5).replace('-','.'):`${td.getMonth()+1}.${td.getDate()}`;
+              const svcStr=lastPaid?(lastPaid.svc||''):'';
+              const amtStr=lastPaid?((paidBks[lastPaid.id].amount||0).toLocaleString()):'';
+              const body=`루미네일 (${sel.name}님) ${dateStr} ${svcStr} ${amtStr}원 사용  잔액 ${prepaidBal.toLocaleString()}원`;
+              const phone=sel.phone.replace(/-/g,'');
+              return (
+                <a href={`sms:${phone}&body=${encodeURIComponent(body)}`}
+                  style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:11,background:PL,border:"1px solid "+PM,color:P,fontSize:12,fontWeight:700,marginBottom:9,textDecoration:"none"}}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  선불권 잔액 안내 문자
+                </a>
+              );
+            })()}
             {sel.tags.length>0 && (
               <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
                 {sel.tags.map(t => <span key={t} style={{padding:"2px 8px",borderRadius:20,background:PL,fontSize:10,color:P,fontWeight:600}}>{t}</span>)}
