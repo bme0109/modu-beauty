@@ -1802,7 +1802,7 @@ function CalPage({ onDate }) {
           {days.map(day => (
             <div key={day.d} onClick={() => onDate(day.ds)}
               style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
-              <span style={{fontSize:10,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.0}}>{day.d}</span>
+              <span style={{fontSize:10,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.hol||day.isW?RD:day.bks.length>0?P:G7,lineHeight:1.0}}>{day.d}</span>
               {day.hol&&!day.isT&&<span style={{fontSize:5,color:RD,lineHeight:1,textAlign:"center"}}>{day.hol}</span>}
               {day.bks.length>0 && <div style={{width:"85%",height:"0.5px",background:day.isT?"rgba(255,255,255,0.35)":G2,margin:"1.5px 0"}}/>}
               {day.bks.slice(0,5).map(b => (
