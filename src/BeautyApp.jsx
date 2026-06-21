@@ -1742,10 +1742,54 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
   const TAGS = ["VIP","단골","예약금 필수","노쇼 주의","큐티클 예민","왼손잡이","손톱 얇음","다한증"];
   const [customTags, setCustomTags] = useState([]);
   const [newTag, setNewTag] = useState("");
+  const [showNaverImport, setShowNaverImport] = useState(false);
+  const [naverImportText, setNaverImportText] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   const filtered = custs.filter(c =>
     c.name.includes(q) || c.phone.replace(/-/g,"").includes(q.replace(/-/g,""))
   );
+
+  function parseNaverText(txt) {
+    const STATUS = new Set(["완료","취소","확정","대기","노쇼","상태","예약자","전화번호"]);
+    const lines = txt.split(/\n/).map(l=>l.split(/\t/)[0].trim()).filter(Boolean);
+    const result = new Map();
+    for(let i=0; i<lines.length; i++) {
+      const phoneM = lines[i].match(/^(010-\d{4}-\d{4})/);
+      if(phoneM) {
+        const phone = phoneM[1];
+        for(let j=i-1; j>=Math.max(0,i-4); j--) {
+          const cand = lines[j];
+          if(!STATUS.has(cand) && !/^\d/.test(cand) && cand.length>=2 && cand.length<=10 && /[가-힣]/.test(cand)) {
+            if(!result.has(phone)) result.set(phone, cand);
+            break;
+          }
+        }
+      }
+    }
+    return Array.from(result.entries()).map(([phone,name])=>({name,phone}));
+  }
+
+  async function importParsed() {
+    if(!onSaveNew) return;
+    const parsed = parseNaverText(naverImportText);
+    setImporting(true);
+    let added = 0;
+    for(const nc of parsed) {
+      const exists = CUSTS.find(c=>c.phone.replace(/-/g,"")===nc.phone.replace(/-/g,""));
+      if(!exists) {
+        const c = {id:Date.now()+added, name:nc.name, phone:nc.phone, birth:"", memo:"", tags:[], visits:0, revenue:0};
+        CUSTS = [...CUSTS, c];
+        await onSaveNew(c);
+        added++;
+      }
+    }
+    setCusts([...CUSTS]);
+    setImporting(false);
+    setImportResult(added);
+    setNaverImportText("");
+  }
 
   function startEdit(cust) {
     setEditData({...cust, tags:[...cust.tags]});
@@ -2070,7 +2114,31 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
           <button onClick={() => setShowR(true)}
             style={{padding:"8px 13px",borderRadius:10,background:P,border:"none",color:WH,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>+ 신규</button>
         </div>
-        <div style={{fontSize:10,color:G5,marginTop:5}}>총 {custs.length}명</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+          <div style={{fontSize:10,color:G5}}>총 {custs.length}명</div>
+          <button onClick={()=>{setShowNaverImport(v=>!v);setImportResult(null);}}
+            style={{padding:"3px 9px",borderRadius:8,background:showNaverImport?G2:WH,border:"1px solid "+G2,color:G7,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            N 고객 가져오기
+          </button>
+        </div>
+        {showNaverImport && (
+          <div style={{marginTop:8,padding:"10px 12px",background:"#F5F3FC",borderRadius:12}}>
+            <textarea value={naverImportText} onChange={e=>{setNaverImportText(e.target.value);setImportResult(null);}}
+              placeholder={"네이버 예약관리 페이지에서 Ctrl+A → Ctrl+C 후 여기에 붙여넣기"}
+              rows={5} style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid "+G2,fontSize:11,outline:"none",color:DK,background:WH,boxSizing:"border-box",resize:"vertical"}}/>
+            {naverImportText && (
+              <div style={{fontSize:11,color:G5,marginTop:5}}>
+                인식된 고객: <b style={{color:P}}>{parseNaverText(naverImportText).length}명</b>
+                {" ("}기존 제외 시 {parseNaverText(naverImportText).filter(nc=>!CUSTS.find(c=>c.phone.replace(/-/g,"")===nc.phone.replace(/-/g,""))).length}명 신규{")"}
+              </div>
+            )}
+            {importResult!==null && <div style={{fontSize:12,color:P,fontWeight:700,marginTop:5}}>✓ {importResult}명 등록 완료</div>}
+            <button onClick={importParsed} disabled={importing||!naverImportText}
+              style={{marginTop:8,width:"100%",padding:"10px",borderRadius:10,background:importing||!naverImportText?G2:P,border:"none",color:importing||!naverImportText?G5:WH,fontSize:13,fontWeight:700,cursor:importing||!naverImportText?"not-allowed":"pointer"}}>
+              {importing ? "등록 중..." : "고객 등록"}
+            </button>
+          </div>
+        )}
       </div>
       <div style={{padding:"7px 13px"}}>
         {filtered.map(c => (
