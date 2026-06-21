@@ -25,7 +25,7 @@ let OR  = "#F472B6"; // 결제완료 핑크 포인트
 let ORL = "#FDF0F7"; // 결제완료 연한 핑크 배경
 
 const LIGHT={P:"#7C6BC4",PL:"#EDE8F8",PM:"#9B8ED4",PS:"#F5F3FC",BG:"#F7F5FD",G2:"#EAE6F4",G3:"#D8D2EC",G5:"#9E98B8",G7:"#524E6A",DK:"#221D40",WH:"#FFFFFF",RD:"#E05C5C",GR:"#03C75A",GRL:"#E8F9EF",OB:"#EFECF8",OS:"#E5E1F2",OR:"#F472B6",ORL:"#FDF0F7"};
-const DARK ={P:"#00D4FF",PL:"#0E2628",PM:"#00A8CC",PS:"#112020",BG:"#0D1A1C",G2:"#1E3436",G3:"#253E40",G5:"#7BA8A4",G7:"#B0D4D0",DK:"#E8F5F4",WH:"#162628",RD:"#FF4D8D",GR:"#8B5CF6",GRL:"#1E1438",OB:"#0A1614",OS:"#081210",OR:"#FF4D8D",ORL:"#2A1020"};
+const DARK ={P:"#5DD4BE",PL:"#0E2628",PM:"#3AADA0",PS:"#112020",BG:"#0D1A1C",G2:"#1E3436",G3:"#253E40",G5:"#7BA8A4",G7:"#B0D4D0",DK:"#E8F5F4",WH:"#162628",RD:"#FF4D8D",GR:"#8B5CF6",GRL:"#1E1438",OB:"#0A1614",OS:"#081210",OR:"#FF4D8D",ORL:"#2A1020"};
 
 function applyTheme(dark) {
   const t = dark ? DARK : LIGHT;
@@ -4078,7 +4078,7 @@ export default function App({ session, onLogout }) {
             <div style={{fontSize:11,color:G5,fontWeight:600,marginBottom:8}}>결제수단</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
               {(isDark ? [
-                {v:"naverpay",   l:"N페이",     bg:"#0C2820", ac:"#00D4FF", tx:"#72FFE0"},
+                {v:"naverpay",   l:"N페이",     bg:"#0C2820", ac:"#5DD4BE", tx:"#A0EEE0"},
                 {v:"card",       l:"카드",      bg:"#1A1040", ac:"#A87FFF", tx:"#C8AEFF"},
                 {v:"cash",       l:"현금",      bg:"#2C1508", ac:"#FF9B6A", tx:"#FFBE98"},
                 {v:"prepaid",    l:"선불권 사용", bg:ORL,       ac:OR,        tx:OR},
