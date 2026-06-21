@@ -1804,10 +1804,11 @@ function CalPage({ onDate }) {
               style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0",background:day.isT?P:day.bks.length>0?PS:"transparent",cursor:"pointer",overflow:"hidden",minHeight:0,borderRight:"1px solid "+G2,borderBottom:"1px solid "+G2}}>
               <span style={{fontSize:10,fontWeight:day.isT||day.bks.length>0?700:400,color:day.isT?WH:day.bks.length>0?P:day.hol||day.isW?RD:G7,lineHeight:1.0}}>{day.d}</span>
               {day.hol&&!day.isT&&<span style={{fontSize:5,color:RD,lineHeight:1,textAlign:"center"}}>{day.hol}</span>}
+              {day.bks.length>0 && <div style={{height:2}}/>}
               {day.bks.slice(0,5).map(b => (
-                <div key={b.id} style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.85)":P,lineHeight:1.0,padding:"0 1px"}}>{b.name}</div>
+                <div key={b.id} style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",textAlign:"center",color:day.isT?"rgba(255,255,255,0.7)":"rgba(109,78,201,0.65)",lineHeight:1.0,padding:"0 1px"}}>{b.name}</div>
               ))}
-              {day.bks.length>5 && <div style={{fontSize:7,color:day.isT?"rgba(255,255,255,0.6)":G5,lineHeight:1}}>+{day.bks.length-5}</div>}
+              {day.bks.length>5 && <div style={{fontSize:9,fontWeight:700,color:day.isT?"rgba(255,255,255,0.7)":G5,lineHeight:1}}>+{day.bks.length-5}</div>}
             </div>
           ))}
         </div>
