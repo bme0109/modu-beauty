@@ -2613,7 +2613,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
             <div style={{fontSize:9,color:G5,marginBottom:3}}>오늘 매출 ›</div>
             <div style={{fontSize:17,fontWeight:800,color:DK}}>{rev.toLocaleString()}</div>
           </div>
-          <div onClick={() => setShowSales("month")} style={{background:WH,borderRadius:15,padding:"11px",border:"1px solid "+G2,cursor:"pointer"}}>
+          <div onClick={() => setShowSales("today")} style={{background:WH,borderRadius:15,padding:"11px",border:"1px solid "+G2,cursor:"pointer"}}>
             <div style={{fontSize:9,color:G5,marginBottom:3}}>이번달 ›</div>
             <div style={{fontSize:17,fontWeight:800,color:DK}}>{mrev.toLocaleString()}</div>
             <div style={{marginTop:5,marginBottom:4,height:3,background:G2,borderRadius:2}}>
@@ -2711,16 +2711,6 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
         <Sheet onClose={() => setShowSales(null)} maxH="85vh">
           <SheetHandle title="매출 내역" onClose={() => setShowSales(null)}/>
           <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
-            <div style={{display:"flex",gap:10,marginBottom:14}}>
-              <div style={{flex:1,background:PS,borderRadius:14,padding:"12px 14px"}}>
-                <div style={{fontSize:10,color:G5,marginBottom:3}}>오늘</div>
-                <div style={{fontSize:18,fontWeight:800,color:P}}>{rev.toLocaleString()}원</div>
-              </div>
-              <div style={{flex:1,background:PS,borderRadius:14,padding:"12px 14px"}}>
-                <div style={{fontSize:10,color:G5,marginBottom:3}}>이번달</div>
-                <div style={{fontSize:18,fontWeight:800,color:P}}>{mrev.toLocaleString()}원</div>
-              </div>
-            </div>
             {salesDateKeys.map(date => {
               const dayRev = salesDateGroups[date].reduce((s,[_,p])=>s+(p.amount||p.paidAmt||0),0);
               const isToday = date===TODAY;
@@ -4411,3 +4401,4 @@ export default function App({ session, onLogout }) {
     </div>
   );
 }
+
