@@ -2575,6 +2575,8 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   const fil = fs===null ? todB : todB.filter(b=>b.sid===fs);
   const rev = Object.values(paidBks).filter(p=>p.date===TODAY).reduce((s,p)=>s+(p.amount||p.paidAmt||0),0);
   const mrev = Object.values(paidBks).filter(p=>p.date&&p.date.slice(0,7)===TODAY.slice(0,7)).reduce((s,p)=>s+(p.amount||p.paidAmt||0),0);
+  const salesDateGroups = Object.entries(paidBks).filter(([_,p])=>p.date).reduce((acc,[id,p])=>{const d=p.date;if(!acc[d])acc[d]=[];acc[d].push([id,p]);return acc;},{});
+  const salesDateKeys = Object.keys(salesDateGroups).sort((a,b)=>b.localeCompare(a));
 
   const _tn = new Date();
   const _tyr = _tn.getFullYear(), _tmo = _tn.getMonth()+1, _td = _tn.getDate();
@@ -2706,41 +2708,57 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
       </div>
 
       {showSales && (
-        <Sheet onClose={() => setShowSales(null)} maxH="80vh">
-          <SheetHandle title={showSales==="today"?"오늘 매출 상세":"이번달 매출 상세"} onClose={() => setShowSales(null)}/>
+        <Sheet onClose={() => setShowSales(null)} maxH="85vh">
+          <SheetHandle title="매출 내역" onClose={() => setShowSales(null)}/>
           <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
-            <div style={{background:PS,borderRadius:14,padding:"14px 16px",marginBottom:14}}>
-              <div style={{fontSize:11,color:G5,marginBottom:4}}>총 매출</div>
-              <div style={{fontSize:22,fontWeight:800,color:P}}>{(showSales==="today"?rev:mrev).toLocaleString()}원</div>
+            <div style={{display:"flex",gap:10,marginBottom:14}}>
+              <div style={{flex:1,background:PS,borderRadius:14,padding:"12px 14px"}}>
+                <div style={{fontSize:10,color:G5,marginBottom:3}}>오늘</div>
+                <div style={{fontSize:18,fontWeight:800,color:P}}>{rev.toLocaleString()}원</div>
+              </div>
+              <div style={{flex:1,background:PS,borderRadius:14,padding:"12px 14px"}}>
+                <div style={{fontSize:10,color:G5,marginBottom:3}}>이번달</div>
+                <div style={{fontSize:18,fontWeight:800,color:P}}>{mrev.toLocaleString()}원</div>
+              </div>
             </div>
-            {Object.entries(paidBks)
-              .filter(([_,p])=>showSales==="today"?p.date===TODAY:p.date&&p.date.slice(0,7)===TODAY.slice(0,7))
-              .map(([bkId,p]) => {
-                const b = BKS.find(x=>String(x.id)===String(bkId)||String(x.firestoreId)===String(bkId));
-                const name = b?.name||"고객";
-                const isPrepaid = p.method==='선불권 사용';
-                const custPhone = (CUSTS.find(c=>c.name===name)?.phone||'').replace(/-/g,'');
-                const prepaidRec = isPrepaid ? PREPAID_DATA.find(d=>d.custName===name) : null;
-                const bal = prepaidRec ? prepaidRec.balance : 0;
-                const dateStr = (p.date||TODAY).slice(5).replace('-','.');
-                const smsBody = `루미네일 (${name}님)\n${dateStr} ${b?.svc||''} ${(p.paidAmt||0).toLocaleString()}원 사용\n잔액 ${bal.toLocaleString()}원\n감사합니다. ♥`;
-                return (
-                  <div key={bkId} style={{display:"flex",alignItems:"center",padding:"10px 14px",borderRadius:11,border:"1px solid "+G2,marginBottom:7,background:WH,gap:8}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:700,color:DK}}>{name}</div>
-                      <div style={{fontSize:11,color:G5}}>{p.date} · {b?.svc||""} · {p.method}</div>
-                    </div>
-                    <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.amount||p.paidAmt||0).toLocaleString()}원</span>
-                    {isPrepaid && custPhone && (
-                      <button onClick={()=>setSmsEdit({phone:custPhone,body:smsBody})}
-                        style={{padding:"5px 10px",borderRadius:8,background:PL,border:"1px solid "+PM,color:P,fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>
-                        문자
-                      </button>
-                    )}
+            {salesDateKeys.map(date => {
+              const dayRev = salesDateGroups[date].reduce((s,[_,p])=>s+(p.amount||p.paidAmt||0),0);
+              const isToday = date===TODAY;
+              const label = date.slice(5).replace('-','.') + (isToday?' (오늘)':'');
+              return (
+                <div key={date} style={{marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <span style={{fontSize:12,fontWeight:700,color:isToday?P:G5}}>{label}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:isToday?P:G7}}>{dayRev.toLocaleString()}원</span>
                   </div>
-                );
-              })
-            }
+                  {salesDateGroups[date].map(([bkId,p]) => {
+                    const b = BKS.find(x=>String(x.id)===String(bkId)||String(x.firestoreId)===String(bkId));
+                    const name = b?.name||"고객";
+                    const isPrepaid = p.method==='선불권 사용';
+                    const custPhone = (CUSTS.find(c=>c.name===name)?.phone||'').replace(/-/g,'');
+                    const prepaidRec = isPrepaid ? PREPAID_DATA.find(d=>d.custName===name) : null;
+                    const bal = prepaidRec ? prepaidRec.balance : 0;
+                    const dateStr = date.slice(5).replace('-','.');
+                    const smsBody = `루미네일 (${name}님)\n${dateStr} ${b?.svc||''} ${(p.paidAmt||0).toLocaleString()}원 사용\n잔액 ${bal.toLocaleString()}원\n감사합니다. ♥`;
+                    return (
+                      <div key={bkId} style={{display:"flex",alignItems:"center",padding:"10px 14px",borderRadius:11,border:"1px solid "+G2,marginBottom:6,background:WH,gap:8}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:13,fontWeight:700,color:DK}}>{name}</div>
+                          <div style={{fontSize:11,color:G5}}>{b?.svc||""} · {p.method}</div>
+                        </div>
+                        <span style={{fontSize:13,fontWeight:700,color:P}}>{(p.amount||p.paidAmt||0).toLocaleString()}원</span>
+                        {isPrepaid && custPhone && (
+                          <button onClick={()=>setSmsEdit({phone:custPhone,body:smsBody})}
+                            style={{padding:"5px 10px",borderRadius:8,background:PL,border:"1px solid "+PM,color:P,fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>
+                            문자
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         </Sheet>
       )}
