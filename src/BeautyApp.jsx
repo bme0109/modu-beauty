@@ -2080,7 +2080,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
               const dateStr=lastPaid?lastPaid.date.slice(5).replace('-','.'):`${td.getMonth()+1}.${td.getDate()}`;
               const svcStr=lastPaid?(lastPaid.svc||''):'';
               const amtStr=lastPaid?((paidBks[lastPaid.id].amount||0).toLocaleString()):'';
-              const body=`루미네일 (${sel.name}님)\n${dateStr} ${svcStr} ${amtStr}원 사용\n잔액 ${prepaidBal.toLocaleString()}원`;
+              const body=`루미네일 (${sel.name}님)\n${dateStr} ${svcStr} ${amtStr}원 사용\n잔액 ${prepaidBal.toLocaleString()}원\n감사합니다. ♥`;
               const phone=sel.phone.replace(/-/g,'');
               return (
                 <button onClick={()=>setSmsEdit({phone, body})}
@@ -3065,6 +3065,46 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
             <div style={{fontSize:10,color:G5,marginTop:4}}>총충전 {data.reduce((s,d)=>s+d.total,0).toLocaleString()}원</div>
           </div>
         </div>
+        {/* 오늘 선불권 사용 고객 */}
+        {(()=>{
+          const todayUses = data.flatMap(d =>
+            d.history.filter(h=>h.type==='use'&&h.date===TODAY).map(h=>({
+              custName:d.custName,
+              custPhone:(CUSTS.find(c=>c.name===d.custName)?.phone||'').replace(/-/g,''),
+              balance:d.balance,
+              svc:h.memo.replace(/ 결제$/,''),
+              amount:h.amount,
+              dateStr:TODAY.slice(5).replace('-','.'),
+            }))
+          );
+          if(!todayUses.length) return null;
+          return (
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                오늘 선불권 사용 · {todayUses.length}명
+              </div>
+              {todayUses.map((u,i)=>{
+                const body=`루미네일 (${u.custName}님)\n${u.dateStr} ${u.svc} ${u.amount.toLocaleString()}원 사용\n잔액 ${u.balance.toLocaleString()}원\n감사합니다. ♥`;
+                return (
+                  <div key={i} style={{background:WH,borderRadius:13,padding:"11px 14px",marginBottom:7,border:"1px solid "+G2,display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,color:DK}}>{u.custName}님</div>
+                      <div style={{fontSize:11,color:G5,marginTop:2}}>{u.svc} {u.amount.toLocaleString()}원 · 잔액 <span style={{color:P,fontWeight:600}}>{u.balance.toLocaleString()}원</span></div>
+                    </div>
+                    {u.custPhone ? (
+                      <button onClick={()=>setSmsEdit({phone:u.custPhone,body})}
+                        style={{padding:"7px 13px",borderRadius:10,background:PL,border:"1px solid "+PM,color:P,fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        문자
+                      </button>
+                    ) : <span style={{fontSize:10,color:G5}}>번호없음</span>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
         {/* 검색창 */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
           <div style={{flex:1,display:"flex",alignItems:"center",background:WH,borderRadius:11,border:"1px solid "+G2,padding:"9px 12px",gap:8}}>
@@ -4069,11 +4109,11 @@ export default function App({ session, onLogout }) {
             {payDone.phone ? (
               <>
                 <textarea
-                  defaultValue={`루미네일 (${payDone.name}님)\n${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용\n잔액 ${payDone.prepaidBal.toLocaleString()}원`}
+                  defaultValue={`루미네일 (${payDone.name}님)\n${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용\n잔액 ${payDone.prepaidBal.toLocaleString()}원\n감사합니다. ♥`}
                   id="payDoneSmsText"
                   style={{width:"100%",minHeight:80,padding:"11px",borderRadius:11,border:"1.5px solid "+G2,fontSize:13,color:DK,background:BG,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.7,fontFamily:"inherit",marginBottom:10}}/>
                 <a href={`sms:${payDone.phone.replace(/-/g,'')}`}
-                  onClick={e=>{const el=document.getElementById('payDoneSmsText');const txt=el?el.value:`루미네일 (${payDone.name}님)\n${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용\n잔액 ${payDone.prepaidBal.toLocaleString()}원`;e.currentTarget.href=`sms:${payDone.phone.replace(/-/g,'')}&body=${encodeURIComponent(txt)}`;setTimeout(()=>setPayDone(null),500);}}
+                  onClick={e=>{const el=document.getElementById('payDoneSmsText');const txt=el?el.value:`루미네일 (${payDone.name}님)\n${payDone.date} ${payDone.svc} ${payDone.amount.toLocaleString()}원 사용\n잔액 ${payDone.prepaidBal.toLocaleString()}원\n감사합니다. ♥`;e.currentTarget.href=`sms:${payDone.phone.replace(/-/g,'')}&body=${encodeURIComponent(txt)}`;setTimeout(()=>setPayDone(null),500);}}
                   style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px",borderRadius:14,background:P,color:WH,fontSize:14,fontWeight:700,marginBottom:10,textDecoration:"none"}}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={WH} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   문자 보내기
