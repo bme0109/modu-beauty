@@ -215,69 +215,72 @@ function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=
           </div>
         </div>
 
-        {/* 날짜 */}
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>날짜</div>
-          <button onClick={() => {setShowCal(v=>!v); setShowTime(false);}}
-            style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1.5px solid "+(showCal?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
-            <span style={{fontSize:13,fontWeight:600,color:DK}}>{editBk.date}</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showCal?P:G5} strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          </button>
-          {showCal && (
-            <div style={{marginTop:8,background:PS,borderRadius:12,padding:"12px 10px",border:"1px solid "+G2}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <button onClick={() => {if(calMo===1){setCalMo(12);setCalYr(y=>y-1);}else setCalMo(m=>m-1);}}
-                  style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 6px"}}>‹</button>
-                <span style={{fontSize:13,fontWeight:700,color:DK}}>{calYr}년 {calMo}월</span>
-                <button onClick={() => {if(calMo===12){setCalMo(1);setCalYr(y=>y+1);}else setCalMo(m=>m+1);}}
-                  style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 6px"}}>›</button>
+        {/* 날짜 + 예약 시간 - 한 줄 병렬 */}
+        <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"flex-start"}}>
+          {/* 날짜 */}
+          <div style={{flex:1}}>
+            <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>날짜</div>
+            <button onClick={() => {setShowCal(v=>!v); setShowTime(false); setShowSvc(false);}}
+              style={{width:"100%",padding:"11px 10px",borderRadius:10,border:"1.5px solid "+(showCal?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
+              <span style={{fontSize:12,fontWeight:600,color:DK}}>{editBk.date}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={showCal?P:G5} strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </button>
+            {showCal && (
+              <div style={{marginTop:8,background:PS,borderRadius:12,padding:"12px 10px",border:"1px solid "+G2,position:"relative",zIndex:10}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <button onClick={() => {if(calMo===1){setCalMo(12);setCalYr(y=>y-1);}else setCalMo(m=>m-1);}}
+                    style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 6px"}}>‹</button>
+                  <span style={{fontSize:12,fontWeight:700,color:DK}}>{calYr}년 {calMo}월</span>
+                  <button onClick={() => {if(calMo===12){setCalMo(1);setCalYr(y=>y+1);}else setCalMo(m=>m+1);}}
+                    style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 6px"}}>›</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
+                  {["일","월","화","수","목","금","토"].map((d,i)=>(
+                    <div key={d} style={{textAlign:"center",fontSize:9,fontWeight:600,color:i===0||i===6?RD:G5}}>{d}</div>
+                  ))}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+                  {Array.from({length:fd}).map((_,i)=><div key={"e"+i}/>)}
+                  {Array.from({length:dim},(_,i)=>{
+                    const d = i+1;
+                    const ds = calYr+"-"+String(calMo).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+                    const sel = editBk.date===ds;
+                    const dow = (fd+i)%7;
+                    return (
+                      <div key={d} onClick={() => {setEditBk(p=>({...p,date:ds}));setShowCal(false);}}
+                        style={{aspectRatio:"1",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",background:sel?P:"transparent",cursor:"pointer"}}>
+                        <span style={{fontSize:12,fontWeight:sel?700:400,color:sel?WH:dow===0||dow===6?RD:G7}}>{d}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
-                {["일","월","화","수","목","금","토"].map((d,i)=>(
-                  <div key={d} style={{textAlign:"center",fontSize:9,fontWeight:600,color:i===0||i===6?RD:G5}}>{d}</div>
+            )}
+          </div>
+
+          {/* 예약 시간 */}
+          <div style={{flex:"0 0 100px"}}>
+            <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시간</div>
+            <button onClick={() => {setShowTime(v=>!v); setShowCal(false); setShowSvc(false);}}
+              style={{width:"100%",padding:"11px 10px",borderRadius:10,border:"1.5px solid "+(showTime?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
+              <span style={{fontSize:12,fontWeight:600,color:DK}}>{editBk.time}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={showTime?P:G5} strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </button>
+            {showTime && (
+              <div style={{marginTop:8,background:PS,borderRadius:12,padding:"10px",border:"1px solid "+G2,maxHeight:180,overflowY:"auto",position:"relative",zIndex:10}}>
+                {timeOpts.map(t => (
+                  <div key={t} onClick={() => {setEditBk(p=>({...p,time:t}));setShowTime(false);}}
+                    style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",background:editBk.time===t?P:"transparent",marginBottom:2}}>
+                    <span style={{fontSize:12,fontWeight:editBk.time===t?700:400,color:editBk.time===t?WH:DK}}>{t}</span>
+                  </div>
                 ))}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
-                {Array.from({length:fd}).map((_,i)=><div key={"e"+i}/>)}
-                {Array.from({length:dim},(_,i)=>{
-                  const d = i+1;
-                  const ds = calYr+"-"+String(calMo).padStart(2,"0")+"-"+String(d).padStart(2,"0");
-                  const sel = editBk.date===ds;
-                  const dow = (fd+i)%7;
-                  return (
-                    <div key={d} onClick={() => {setEditBk(p=>({...p,date:ds}));setShowCal(false);}}
-                      style={{aspectRatio:"1",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",background:sel?P:"transparent",cursor:"pointer"}}>
-                      <span style={{fontSize:12,fontWeight:sel?700:400,color:sel?WH:dow===0||dow===6?RD:G7}}>{d}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 예약 시간 - 시계 아이콘 + 드롭다운 */}
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>예약 시간</div>
-          <button onClick={() => {setShowTime(v=>!v); setShowCal(false);}}
-            style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1.5px solid "+(showTime?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
-            <span style={{fontSize:13,fontWeight:600,color:DK}}>{editBk.time}</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showTime?P:G5} strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-          </button>
-          {showTime && (
-            <div style={{marginTop:8,background:PS,borderRadius:12,padding:"10px",border:"1px solid "+G2,maxHeight:180,overflowY:"auto"}}>
-              {timeOpts.map(t => (
-                <div key={t} onClick={() => {setEditBk(p=>({...p,time:t}));setShowTime(false);}}
-                  style={{padding:"9px 12px",borderRadius:8,cursor:"pointer",background:editBk.time===t?P:"transparent",marginBottom:2}}>
-                  <span style={{fontSize:13,fontWeight:editBk.time===t?700:400,color:editBk.time===t?WH:DK}}>{t}</span>
-                </div>
-              ))}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* 시술명 */}
