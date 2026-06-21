@@ -1721,6 +1721,7 @@ function TT({ date, onAdd, staff, onPay, paidBks, treatmentRecords, onRecord, on
           onSave={() => {
             const idx = BKS.findIndex(b => b.id===editBk.id);
             if(idx>=0) BKS[idx] = {...BKS[idx], ...editBk};
+            if(onUpdate) onUpdate(editBk, editBk);
             setEditBk(null);
           }}
           onClose={() => setEditBk(null)}
@@ -2561,7 +2562,7 @@ function SalesPage({ paidBks, onDeletePaid }) {
 }
 
 // ── 홈 페이지 ─────────────────────────────────────────
-function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onDelete, onDeletePaid }) {
+function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onDelete, onDeletePaid, onUpdate }) {
   const [fs, setFs] = useState(null);
   const [showSales, setShowSales] = useState(null);
   const [showBk, setShowBk] = useState(null);
@@ -2970,6 +2971,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
           onSave={() => {
             const idx = BKS.findIndex(b => b.id===editBk.id);
             if(idx>=0) BKS[idx] = {...BKS[idx], ...editBk};
+            if(onUpdate) onUpdate(editBk, editBk);
             setEditBk(null);
           }}
           onClose={() => setEditBk(null)}
@@ -4156,7 +4158,7 @@ export default function App({ session, onLogout }) {
       )}
 
       <div>
-        {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;}); }}/>}
+        {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;}); }} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}}/>}
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
@@ -4491,6 +4493,7 @@ export default function App({ session, onLogout }) {
     </div>
   );
 }
+
 
 
 
