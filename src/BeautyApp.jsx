@@ -2539,24 +2539,6 @@ function SalesPage({ paidBks, onDeletePaid }) {
           </div>
         </Sheet>
       )}
-      {smsEdit && (
-        <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-          <div style={{width:"100%",maxWidth:430,background:WH,borderRadius:"22px 22px 0 0",padding:"22px 18px 44px"}}>
-            <div style={{fontSize:14,fontWeight:700,color:DK,marginBottom:10}}>문자 내용 확인 · 수정</div>
-            <textarea value={smsEdit.body} onChange={e=>setSmsEdit(v=>({...v,body:e.target.value}))}
-              style={{width:"100%",minHeight:90,padding:"12px",borderRadius:11,border:"1.5px solid "+G2,fontSize:13,color:DK,background:BG,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.7,fontFamily:"inherit"}}/>
-            <div style={{display:"flex",gap:8,marginTop:10}}>
-              <button onClick={()=>setSmsEdit(null)} style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:13,fontWeight:600,cursor:"pointer"}}>취소</button>
-              <a href={`sms:${smsEdit.phone}&body=${encodeURIComponent(smsEdit.body)}`}
-                onClick={()=>setTimeout(()=>setSmsEdit(null),300)}
-                style={{flex:2,padding:"13px",borderRadius:13,background:P,color:WH,fontSize:13,fontWeight:700,textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={WH} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                문자 보내기
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
