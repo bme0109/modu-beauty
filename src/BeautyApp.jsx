@@ -682,15 +682,18 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   }
   function applyNaverPaste() {
     const txt = naverText;
-    const nameM  = txt.match(/예약자명\s+(.+)/);
-    const phoneM = txt.match(/전화번호\s+([\d\-]+)/);
-    const dtM    = txt.match(/이용일시\s+(\d{4})\.(\d{2})\.(\d{2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
+    const ANNOUNCE_P = ['예약 변경 및 취소 안내','네이버 예약 시간 변동 안내'];
+    const nameM  = txt.match(/예약자명[\s:]+([^\n\t]+)/);
+    const phoneM = txt.match(/전화번호[\s:]+([\d\-]+)/);
+    const dtM    = txt.match(/이용일시[\s:]+(\d{4})\.(\d{2})\.(\d{2})\.\([가-힣]+\)\s*(오전|오후)\s+(\d{1,2}):(\d{2})/);
+    const depM   = txt.match(/결제완료\s*([\d,]+)원/);
     const lines  = txt.split('\n').map(l=>l.trim()).filter(Boolean);
     const mi = lines.findIndex(l=>l.startsWith('선택메뉴'));
     let svcName="", svcAmt="";
     if(mi>=0){
       for(const line of lines.slice(mi+1)){
         if(line.startsWith('총 ')) continue;
+        if(ANNOUNCE_P.some(a=>line.includes(a))) continue;
         const pm = line.match(/^(.+?)\s+([\d,]+)원$/);
         if(pm){ svcName=pm[1].trim(); svcAmt=pm[2].replace(/,/g,''); break; }
       }
@@ -708,6 +711,8 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     }
     if(svcName) upd.svc = svcName;
     if(svcAmt)  upd.svcPrice = svcAmt;
+    upd.dep = 'naver_paid';
+    if(depM) upd.depAmt = depM[1].replace(/,/g,'');
     if(upd.name || upd.phone){
       const ex = CUSTS.find(c=>c.phone && upd.phone && c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
       if(ex){
@@ -743,10 +748,10 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   }
 
   const payOpts = [
-    {v:"naver",    l:"N페이",   bg:"#E8F9EE", ac:"#03C75A", tx:"#009444"},
-    {v:"transfer", l:"계좌이체",bg:"#F0FAFB", ac:"#3BAEAA", tx:"#1A8A86"},
-    {v:"cash",     l:"현금",    bg:"#FFF5ED", ac:"#E87940", tx:"#C0551A"},
-    {v:"etc",      l:"기타",    bg:"#F3F4F7", ac:"#8890A8", tx:"#6B7385"},
+    {v:"naver_paid",l:"N결제",  bg:"#E8F9EE", ac:"#03C75A", tx:"#009444"},
+    {v:"transfer",  l:"계좌이체",bg:"#F0FAFB", ac:"#3BAEAA", tx:"#1A8A86"},
+    {v:"cash",      l:"현금",   bg:"#FFF5ED", ac:"#E87940", tx:"#C0551A"},
+    {v:"etc",       l:"기타",   bg:"#F3F4F7", ac:"#8890A8", tx:"#6B7385"},
   ];
 
   return (
