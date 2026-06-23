@@ -2036,9 +2036,10 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
                 <div style={{position:"absolute",right:0,top:"100%",zIndex:100,background:WH,borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.13)",border:"1px solid "+G2,minWidth:120,overflow:"hidden"}}>
                   <button onClick={() => {
                     setShowCustMenu(false);
-                    const myBks = Object.values(paidBks||{}).filter(p=>p.custName===sel.name);
-                    const visits = myBks.length;
-                    const revenue = myBks.reduce((s,p)=>s+(p.amount||0),0);
+                    const paidEntries = Object.entries(paidBks||{}).filter(([,p])=>p.custName===sel.name);
+                    const validEntries = paidEntries.filter(([bkId])=>{ const bk=BKS.find(b=>String(b.id)===String(bkId)||String(b.firestoreId)===String(bkId)); return !bk||(bk.status!=="noshow"&&bk.status!=="cancel"); });
+                    const visits = validEntries.length;
+                    const revenue = validEntries.reduce((s,[,p])=>s+(p.amount||0),0);
                     if(!window.confirm("방문횟수 "+visits+"회, 누적매출 "+revenue.toLocaleString()+"원으로 재계산할까요?")) return;
                     const updated = {...sel, visits, revenue};
                     setCusts(p=>p.map(c=>c.id===sel.id?updated:c));
@@ -2108,27 +2109,33 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
           ) : hist.map(b => (
             <div key={b.id}
               onClick={() => setSelVisit(b)}
-              style={{background:WH,borderRadius:11,padding:"11px 13px",marginBottom:6,border:"1px solid "+G2,cursor:"pointer"}}>
+              style={{background:b.status==="cancel"?G2:b.status==="noshow"?RD+"12":WH,borderRadius:11,padding:"11px 13px",marginBottom:6,border:"1px solid "+(b.status==="cancel"?G5:b.status==="noshow"?RD+"50":G2),cursor:"pointer",opacity:b.status==="cancel"?0.7:1}}>
               {(()=>{
                 const paid=paidBks&&paidBks[b.id];
                 const hasDeposit=(b.depAmt||0)>0;
+                const isNoshow=b.status==="noshow";
+                const isCancel=b.status==="cancel";
                 const amtLabel = paid
                   ? (paidBks[b.id].amount||0).toLocaleString()+"원"
                   : hasDeposit
                     ? (b.depAmt||0).toLocaleString()+"원"
                     : b.price.toLocaleString()+"원";
-                const amtColor = paid ? OR : G5;
-                const badge = paid ? null : hasDeposit
-                  ? {label:"잔금 대기",bg:"#FFF3E0",color:"#E65100"}
-                  : {label:"미결제",bg:"#F5F5F5",color:G5};
+                const amtColor = isNoshow||isCancel ? G5 : paid ? OR : G5;
+                const badge = isCancel
+                  ? {label:"취소",bg:G3,color:G5}
+                  : isNoshow
+                    ? {label:"노쇼",bg:RD+"25",color:RD}
+                    : paid ? null : hasDeposit
+                      ? {label:"잔금 대기",bg:"#FFF3E0",color:"#E65100"}
+                      : {label:"미결제",bg:"#F5F5F5",color:G5};
                 return (
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                    <span style={{fontSize:12,fontWeight:700,color:DK}}>{b.date}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:isCancel?G5:DK,textDecoration:isCancel?"line-through":"none"}}>{b.date}</span>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       {badge&&<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:8,background:badge.bg,color:badge.color}}>{badge.label}</span>}
-                      <span style={{fontSize:12,fontWeight:700,color:amtColor}}>{amtLabel}</span>
-                      {!paid && <button onClick={e=>{e.stopPropagation();if(!window.confirm("이 방문 기록을 삭제할까요?"))return;setDeletedBkIds(prev=>new Set([...prev,b.id]));if(onDeleteBooking)onDeleteBooking(b);}} style={{background:"none",border:"none",cursor:"pointer",color:RD,fontSize:16,padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>}
-                      {paid && <span style={{fontSize:11,color:G5}}>›</span>}
+                      {!isNoshow&&!isCancel&&<span style={{fontSize:12,fontWeight:700,color:amtColor}}>{amtLabel}</span>}
+                      {!paid&&!isNoshow&&!isCancel&&<button onClick={e=>{e.stopPropagation();if(!window.confirm("이 방문 기록을 삭제할까요?"))return;setDeletedBkIds(prev=>new Set([...prev,b.id]));if(onDeleteBooking)onDeleteBooking(b);}} style={{background:"none",border:"none",cursor:"pointer",color:RD,fontSize:16,padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>}
+                      {paid&&!isNoshow&&!isCancel&&<span style={{fontSize:11,color:G5}}>›</span>}
                     </div>
                   </div>
                 );
