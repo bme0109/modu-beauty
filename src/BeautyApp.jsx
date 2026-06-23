@@ -3979,6 +3979,9 @@ export default function App({ session, onLogout }) {
   const [confirmCancel, setConfirmCancel] = useState(null);
   // 제품 추가
   const [productItems, setProductItems] = useState([]);
+  // 복합결제
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitItems, setSplitItems] = useState([]); // [{v,l,amount}]
   // 시술 기록
   const [showRecord, setShowRecord] = useState(null);
   const [treatmentRecords, setTreatmentRecords] = useState({});
@@ -3989,7 +3992,7 @@ export default function App({ session, onLogout }) {
     if(uid) localStorage.setItem(`paidBks_${uid}`, JSON.stringify(paidBks));
   }, [paidBks, uid]);
 
-  function openPayment(bk) { setShowPay(bk); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt(""); }
+  function openPayment(bk) { setShowPay(bk); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt(""); setSplitMode(false); setSplitItems([]); }
   function openRecord(bk) { setShowRecord(bk); }
   function requestCancelPay(bkId, bkName) {
     setConfirmCancel({ id: bkId, name: bkName });
@@ -4031,13 +4034,29 @@ export default function App({ session, onLogout }) {
   }
 
   function completePayment() {
-    if(!payMethod||!showPay) return;
-    if(payMethod==="prepaid_new"&&!chargeAmt) return;
+    if(!showPay) return;
     const price = finalAmt ? Number(finalAmt) : showPay.price;
     const depAmt = showPay.depAmt || 0;
     const prodTotal = productItems.reduce((s,x) => s+(Number(x.price)||0), 0);
-    // 실제 오늘 결제금액 = 잔금 + 제품금액
     const paidAmt = Math.max(0, price - depAmt) + prodTotal;
+    const prodMemo = productItems.filter(x=>x.name).map(x=>x.name+(x.price?" "+Number(x.price).toLocaleString()+"원":"")).join(", ");
+    const bkDate = showPay.date||TODAY;
+
+    // ── 복합결제 처리 ──
+    if(splitMode) {
+      if(splitItems.length < 1) return;
+      const splitTotal = splitItems.reduce((s,x)=>s+(Number(x.amount)||0),0);
+      if(splitTotal !== paidAmt) return;
+      const methodLabel = splitItems.map(x=>`${x.l} ${Number(x.amount).toLocaleString()}원`).join("+");
+      setPaidBks(p=>({...p,[showPay.id]:{method:methodLabel,amount:price,paidAmt,depAmt,prodTotal,prodMemo,bonus:0,date:bkDate,custName:showPay.name}}));
+      const cust2=CUSTS.find(c=>c.name===showPay.name);
+      if(cust2){const upd={...cust2,visits:(cust2.visits||0)+1,revenue:(cust2.revenue||0)+price};CUSTS=CUSTS.map(c=>c.id===cust2.id?upd:c);saveCustomer(upd);}
+      setShowPay(null);setPayMethod("");setPayMemo("");setChargeAmt("");setPayBonus("");setProductItems([]);setFinalAmt("");setSplitMode(false);setSplitItems([]);
+      return;
+    }
+
+    if(!payMethod) return;
+    if(payMethod==="prepaid_new"&&!chargeAmt) return;
     const charge = Number(chargeAmt)||0;
     const rate = bonusRates[payMethod]||0;
     const bonus = payMethod==="prepaid_new" ? (Number(payBonus)||0) : Math.round(paidAmt * rate / 100);
@@ -4049,9 +4068,6 @@ export default function App({ session, onLogout }) {
       payMethod==="prepaid_new"? "선불권 충전 "+charge.toLocaleString()+"원" :
       payMemo || "기타";
 
-    // 제품 목록 메모
-    const prodMemo = productItems.filter(x=>x.name).map(x=>x.name+(x.price?" "+Number(x.price).toLocaleString()+"원":"")).join(", ");
-
     setPaidBks(p => ({
       ...p,
       [showPay.id]: {
@@ -4062,7 +4078,7 @@ export default function App({ session, onLogout }) {
         prodTotal,
         prodMemo,
         bonus,
-        date: showPay.date||TODAY,
+        date: bkDate,
         custName: showPay.name,
         ...(payMethod==="prepaid_new" ? {chargeAmt: charge, chargeBonus: bonus} : {}),
       }
@@ -4108,7 +4124,7 @@ export default function App({ session, onLogout }) {
       const todayStr = TODAY.slice(5).replace('-','.' );
       setPayDone({name:showPay.name, phone:custPhone, date:todayStr, svc:showPay.svc, amount:paidAmt, prepaidBal:newBal});
     }
-    setShowPay(null); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt("");
+    setShowPay(null); setPayMethod(""); setPayMemo(""); setChargeAmt(""); setPayBonus(""); setProductItems([]); setFinalAmt(""); setSplitMode(false); setSplitItems([]);
   }
 
   function handleDate(ds) { setTtDate(ds); setTab("timetable"); }
@@ -4380,23 +4396,87 @@ export default function App({ session, onLogout }) {
                 {v:"prepaid_new",l:"선불권 충전", bg:"#E5F8F4", ac:"#5DC4B0", tx:"#2A8070"},
                 {v:"etc",        l:"기타",      bg:"#F0EEF8", ac:"#9890C5", tx:"#504888"},
               ]).map(o => {
-                const sel=payMethod===o.v;
+                const sel = splitMode
+                  ? splitItems.some(x=>x.v===o.v)
+                  : payMethod===o.v;
+                const isPrep = o.v==='prepaid'||o.v==='prepaid_new';
                 return (
-                  <button key={o.v} onClick={() => setPayMethod(o.v)}
-                    style={{padding:"10px 4px",borderRadius:12,border:sel?"none":"1px solid "+G2,background:sel?o.ac:o.bg,color:sel?WH:o.tx,fontSize:11,fontWeight:700,cursor:"pointer",textAlign:"center",lineHeight:1.4,boxShadow:sel?"0 3px 10px "+o.ac+"44":"none"}}>
-                    {o.l}
+                  <button key={o.v} onClick={() => {
+                    if(splitMode) {
+                      if(isPrep) return; // 복합결제에서 선불권 제외
+                      if(!splitItems.some(x=>x.v===o.v))
+                        setSplitItems(p=>[...p,{v:o.v,l:o.l,amount:""}]);
+                    } else {
+                      setPayMethod(o.v);
+                    }
+                  }}
+                    style={{padding:"10px 4px",borderRadius:12,border:sel?"none":"1px solid "+G2,background:sel?o.ac:o.bg,color:sel?WH:(splitMode&&isPrep?G5:o.tx),fontSize:11,fontWeight:700,cursor:splitMode&&isPrep?"not-allowed":"pointer",textAlign:"center",lineHeight:1.4,boxShadow:sel?"0 3px 10px "+o.ac+"44":"none",opacity:splitMode&&isPrep?0.4:1}}>
+                    {splitMode&&!isPrep&&!splitItems.some(x=>x.v===o.v)?"+ ":""}{o.l}
                   </button>
                 );
               })}
             </div>
 
-            {payMethod==="etc" && (
+            {/* 복합결제 토글 */}
+            <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+              <button onClick={()=>{
+                if(splitMode){setSplitMode(false);setSplitItems([]);setPayMethod("");}
+                else{
+                  const simpleOpts=[{v:"naverpay",l:"N페이"},{v:"card",l:"카드"},{v:"cash",l:"현금"},{v:"transfer",l:"계좌이체"},{v:"etc",l:"기타"}];
+                  const initItem=simpleOpts.find(o=>o.v===payMethod);
+                  setSplitMode(true);
+                  setSplitItems(initItem?[{...initItem,amount:""}]:[]);
+                  setPayMethod("");
+                }
+              }} style={{fontSize:11,fontWeight:700,color:splitMode?RD:P,background:"none",border:"1px solid "+(splitMode?RD:PM),borderRadius:8,padding:"5px 11px",cursor:"pointer"}}>
+                {splitMode?"단일결제로":"복합결제 +"}
+              </button>
+            </div>
+
+            {/* 복합결제 내역 */}
+            {splitMode && (()=>{
+              const effPrice = finalAmt?Number(finalAmt):showPay.price;
+              const prodTot = productItems.reduce((s,x)=>s+(Number(x.price)||0),0);
+              const need = Math.max(0,effPrice-(showPay.depAmt||0))+prodTot;
+              const got = splitItems.reduce((s,x)=>s+(Number(x.amount)||0),0);
+              const diff = need-got;
+              return (
+                <div style={{marginBottom:14,borderRadius:13,border:"1.5px solid "+PM,overflow:"hidden"}}>
+                  <div style={{background:PL,padding:"10px 14px",borderBottom:"1px solid "+G2}}>
+                    <div style={{fontSize:11,fontWeight:700,color:P}}>복합결제 내역</div>
+                  </div>
+                  <div style={{padding:"10px 14px"}}>
+                    {splitItems.map((item,i)=>(
+                      <div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+                        <span style={{fontSize:12,fontWeight:700,color:DK,width:60,flexShrink:0}}>{item.l}</span>
+                        <input value={item.amount} onChange={e=>setSplitItems(p=>p.map((x,j)=>j===i?{...x,amount:e.target.value}:x))}
+                          type="number" placeholder="금액"
+                          style={{flex:1,padding:"8px 10px",borderRadius:9,border:"1.5px solid "+G2,fontSize:13,fontWeight:700,outline:"none",color:DK,background:WH}}/>
+                        <span style={{fontSize:12,color:G5}}>원</span>
+                        <button onClick={()=>setSplitItems(p=>p.filter((_,j)=>j!==i))}
+                          style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,padding:"0 4px",flexShrink:0}}>×</button>
+                      </div>
+                    ))}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderTop:"1px solid "+G2,marginTop:4}}>
+                      <span style={{fontSize:12,color:G5}}>합계 / 필요</span>
+                      <span style={{fontSize:13,fontWeight:800,color:diff===0?GR:RD}}>
+                        {got.toLocaleString()}원 / {need.toLocaleString()}원
+                        {diff>0&&<span style={{fontSize:11,fontWeight:600}}> ({diff.toLocaleString()}원 부족)</span>}
+                        {diff<0&&<span style={{fontSize:11,fontWeight:600}}> ({(-diff).toLocaleString()}원 초과)</span>}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {!splitMode && payMethod==="etc" && (
               <div style={{marginBottom:12}}>
                 <input value={payMemo} onChange={e => setPayMemo(e.target.value)} placeholder="결제 방법 메모 (예: 상품권)"
                   style={{width:"100%",padding:"11px 13px",borderRadius:11,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
               </div>
             )}
-            {payMethod==="prepaid" && (() => {
+            {!splitMode && payMethod==="prepaid" && (() => {
               const pe=PREPAID_DATA.find(d=>d.custName===showPay.name);
               const deduct=Math.max(0,(finalAmt?Number(finalAmt):showPay.price)-(showPay.depAmt||0));
               const afterBal=pe?pe.balance-deduct:null;
@@ -4407,7 +4487,7 @@ export default function App({ session, onLogout }) {
                 </div>
               );
             })()}
-            {payMethod==="prepaid_new" && (
+            {!splitMode && payMethod==="prepaid_new" && (
               <div style={{marginBottom:12,borderRadius:13,border:"1.5px solid #2E7D52",overflow:"hidden"}}>
                 <div style={{background:"#2E7D52",padding:"8px 14px"}}>
                   <span style={{fontSize:11,fontWeight:700,color:WH}}>선불권 충전 + 당일 시술 결제</span>
@@ -4449,12 +4529,17 @@ export default function App({ session, onLogout }) {
 
             <button onClick={completePayment}
               style={{width:"100%",padding:"14px",borderRadius:14,background:(()=>{
+                const ep2=finalAmt?Number(finalAmt):showPay.price;
+                const prodTot2=productItems.reduce((s,x)=>s+(Number(x.price)||0),0);
+                const need2=Math.max(0,ep2-(showPay.depAmt||0))+prodTot2;
+                if(splitMode){
+                  const got2=splitItems.reduce((s,x)=>s+(Number(x.amount)||0),0);
+                  return got2===need2&&splitItems.length>0?P:G3;
+                }
                 if(!payMethod) return G3;
                 if(payMethod==="prepaid_new"){
                   if(!chargeAmt) return G3;
-                  const ep2=finalAmt?Number(finalAmt):showPay.price;
-                  const need=Math.max(0,ep2-(showPay.depAmt||0))+productItems.reduce((s,x)=>s+(Number(x.price)||0),0);
-                  return (Number(chargeAmt)+(Number(payBonus)||0))>=need?P:G3;
+                  return (Number(chargeAmt)+(Number(payBonus)||0))>=need2?P:G3;
                 }
                 return P;
               })(),border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>
@@ -4463,6 +4548,11 @@ export default function App({ session, onLogout }) {
                 const effectivePrice=finalAmt?Number(finalAmt):showPay.price;
                 const svcAmt=Math.max(0,effectivePrice-(showPay.depAmt||0));
                 const total=svcAmt+prodTotal;
+                if(splitMode){
+                  const got3=splitItems.reduce((s,x)=>s+(Number(x.amount)||0),0);
+                  if(splitItems.length===0) return "결제수단을 추가하세요";
+                  return got3===total?"결제 완료 · "+total.toLocaleString()+"원":"금액을 맞춰주세요 ("+got3.toLocaleString()+"원 / "+total.toLocaleString()+"원)";
+                }
                 if(!payMethod) return "결제수단을 선택하세요";
                 if(payMethod==="prepaid_new"){
                   if(!chargeAmt) return "충전 금액을 입력하세요";
@@ -4496,6 +4586,9 @@ export default function App({ session, onLogout }) {
     </div>
   );
 }
+
+
+
 
 
 
