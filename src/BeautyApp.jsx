@@ -2684,7 +2684,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
           const bStatus=b.status;
           const isCancel=bStatus==="cancel";
           const isNoshow=bStatus==="noshow";
-          const cardBg=isCancel?G2:isNoshow?"#FFF0F0":isPaid?GRL:WH;
+          const cardBg=isCancel?G2:isNoshow?"#FFF0F0":isPaid?"#F2FCF6":WH;
           const cardBorder=isCancel?G5:isNoshow?RD+"60":isPaid?GR+"60":G2;
           const accentColor=isCancel?G5:isNoshow?RD:isPaid?GR:P;
           return (
