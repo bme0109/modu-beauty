@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { db } from "./firebase";
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -600,16 +600,25 @@ function CustModal({ onSelect, onClose, onSaveNew }) {
         <div style={{flex:1,overflowY:"auto",padding:"0 18px 20px"}}>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="이름 또는 전화번호 뒤 4자리"
             style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box",marginBottom:10}}/>
-          {filtered.map(c => (
-            <div key={c.id} onClick={() => onSelect(c)}
-              style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid "+G2,cursor:"pointer"}}>
-              <div style={{width:38,height:38,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:P,flexShrink:0}}>{c.name[0]}</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:DK}}>{c.name}{c.phone&&<span style={{fontSize:11,fontWeight:400,color:G5}}> ···{c.phone.replace(/-/g,"").slice(-4)}</span>}</div>
-                <div style={{fontSize:11,color:G5}}>{c.phone} · {c.visits}회</div>
+          {filtered.map(c => {
+            const cBks = BKS.filter(b => b.name === c.name);
+            const noshowCnt = cBks.filter(b => b.status === "noshow").length;
+            const cancelCnt = cBks.filter(b => b.status === "cancel").length;
+            return (
+              <div key={c.id} onClick={() => onSelect(c)}
+                style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid "+G2,cursor:"pointer"}}>
+                <div style={{width:38,height:38,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:P,flexShrink:0}}>{c.name[0]}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:DK,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+                    <span>{c.name}{c.phone&&<span style={{fontSize:11,fontWeight:400,color:G5}}> ···{c.phone.replace(/-/g,"").slice(-4)}</span>}</span>
+                    {noshowCnt>0 && <span style={{fontSize:10,fontWeight:700,color:RD,background:RD+"18",borderRadius:5,padding:"2px 6px",flexShrink:0}}>노쇼 {noshowCnt}회</span>}
+                    {cancelCnt>0 && <span style={{fontSize:10,fontWeight:700,color:G5,background:G3,borderRadius:5,padding:"2px 6px",flexShrink:0}}>취소 {cancelCnt}회</span>}
+                  </div>
+                  <div style={{fontSize:11,color:G5}}>{c.phone} · {c.visits}회</div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {mode === "reg" && (
@@ -666,6 +675,9 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   const [tagList, setTagList] = useState(["VIP","단골","예약금 필수","노쇼 주의","손톱 얇음","큐티클 예민"]);
   const [showNaverPaste, setShowNaverPaste] = useState(false);
   const [naverText, setNaverText] = useState("");
+  const [imgLoading, setImgLoading] = useState(false);
+  const [imgError, setImgError] = useState(null);
+  const imgRef = useRef(null);
 
   function set(k, v) { setF(p => ({...p, [k]: v})); }
   function togTag(t) { setF(p => ({...p, tags: p.tags.includes(t) ? p.tags.filter(x=>x!==t) : [...p.tags,t]})); }
@@ -676,8 +688,8 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     setF(p => ({...p, tags: p.tags.includes(t) ? p.tags : [...p.tags,t]}));
     setCt("");
   }
-  function applyNaverPaste() {
-    const txt = naverText;
+  function applyNaverPaste(txtArg) {
+    const txt = txtArg !== undefined ? txtArg : naverText;
     const ANNOUNCE_P = ['예약 변경 및 취소 안내','네이버 예약 시간 변동 안내'];
     const lines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
     // 이름: "예약자명 심문경" 형식
@@ -772,6 +784,25 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
     setShowNaverPaste(false);
   }
 
+  async function applyImageOcr(file) {
+    setImgLoading(true);
+    setImgError(null);
+    try {
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("kor");
+      const { data: { text } } = await worker.recognize(file);
+      await worker.terminate();
+      if (!text.trim()) {
+        setImgError("텍스트를 인식하지 못했습니다");
+        return;
+      }
+      applyNaverPaste(text);
+    } catch {
+      setImgError("이미지 인식 실패");
+    }
+    setImgLoading(false);
+  }
+
   const _bToday = new Date();
   const _bYr = _bToday.getFullYear(), _bMo = _bToday.getMonth()+1;
   const _bDim = new Date(_bYr, _bMo, 0).getDate();
@@ -807,6 +838,12 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <button onClick={()=>setShowNaverPaste(v=>!v)}
                 style={{padding:"5px 11px",borderRadius:9,background:"#E8F9EE",border:"1px solid #03C75A",color:"#009444",fontSize:11,fontWeight:700,cursor:"pointer"}}>N예약</button>
+              <button onClick={()=>imgRef.current?.click()} disabled={imgLoading}
+                style={{padding:"5px 11px",borderRadius:9,background:PL,border:"1px solid "+PM,color:P,fontSize:11,fontWeight:700,cursor:"pointer",opacity:imgLoading?0.6:1}}>
+                {imgLoading?"인식중…":"사진"}
+              </button>
+              <input ref={imgRef} type="file" accept="image/*" style={{display:"none"}}
+                onChange={e=>{const f=e.target.files?.[0];if(f)applyImageOcr(f);e.target.value="";}}/>
               <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:G5}}>×</button>
             </div>
           </div>
@@ -816,8 +853,14 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
                 placeholder="네이버 톡톡 예약 메시지를 붙여넣으세요"
                 rows={5}
                 style={{width:"100%",border:"1.5px solid #03C75A",borderRadius:9,padding:"9px 11px",fontSize:12,color:DK,background:WH,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
-              <button onClick={applyNaverPaste}
+              <button onClick={()=>applyNaverPaste()}
                 style={{width:"100%",marginTop:8,padding:"10px",borderRadius:10,background:"#03C75A",border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>적용</button>
+            </div>
+          )}
+          {imgError && (
+            <div style={{marginBottom:12,padding:"9px 12px",borderRadius:9,background:"#FFF0F0",border:"1px solid "+RD+"50",color:RD,fontSize:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span>{imgError}</span>
+              <button onClick={()=>setImgError(null)} style={{background:"none",border:"none",cursor:"pointer",color:RD,fontSize:16,lineHeight:1}}>×</button>
             </div>
           )}
 
@@ -838,7 +881,11 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,border:"1.5px solid "+P,background:PL}}>
                 <div style={{width:32,height:32,borderRadius:"50%",background:P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:WH,flexShrink:0}}>{f.name[0]}</div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:700,color:DK}}>{f.name}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:DK,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+                    <span>{f.name}</span>
+                    {(()=>{const n=BKS.filter(b=>b.name===f.name&&b.status==="noshow").length;return n>0&&<span style={{fontSize:10,fontWeight:700,color:RD,background:RD+"18",borderRadius:5,padding:"2px 6px"}}>노쇼 {n}회</span>})()}
+                    {(()=>{const n=BKS.filter(b=>b.name===f.name&&b.status==="cancel").length;return n>0&&<span style={{fontSize:10,fontWeight:700,color:G5,background:G3,borderRadius:5,padding:"2px 6px"}}>취소 {n}회</span>})()}
+                  </div>
                   <div style={{fontSize:11,color:G5}}>{f.phone}</div>
                 </div>
                 <button onClick={() => setF(p => ({...p,cid:"",name:"",phone:""}))}
@@ -854,16 +901,23 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
 
           {/* 날짜 + 시간 */}
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>날짜 / 시간</div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={() => {setShowD(v=>!v);setShowT(false);}}
-                style={{flex:1,padding:"10px 12px",borderRadius:10,border:"1.5px solid "+(showD?P:G2),fontSize:12,background:WH,textAlign:"left",cursor:"pointer",color:DK}}>
-                {f.date}
-              </button>
-              <button onClick={() => {setShowT(v=>!v);setShowD(false);}}
-                style={{flex:"0 0 85px",padding:"10px 10px",borderRadius:10,border:"1.5px solid "+(showT?P:G2),fontSize:12,background:WH,textAlign:"left",cursor:"pointer",color:DK}}>
-                {f.time}
-              </button>
+              <div style={{flex:1}}>
+                <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>날짜</div>
+                <button onClick={() => {setShowD(v=>!v);setShowT(false);}}
+                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+(showD?P:G2),fontSize:12,background:WH,textAlign:"left",cursor:"pointer",color:DK,display:"flex",alignItems:"center",gap:6,boxSizing:"border-box"}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={showD?P:G5} strokeWidth="2" style={{flexShrink:0}}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  {f.date}
+                </button>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시간</div>
+                <button onClick={() => {setShowT(v=>!v);setShowD(false);}}
+                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+(showT?P:G2),fontSize:12,background:WH,textAlign:"left",cursor:"pointer",color:DK,display:"flex",alignItems:"center",gap:6,boxSizing:"border-box"}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={showT?P:G5} strokeWidth="2" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  {f.time}
+                </button>
+              </div>
             </div>
             {showD && (
               <div style={{marginTop:8,background:PS,borderRadius:12,padding:"12px 10px",border:"1px solid "+G2}}>
@@ -900,7 +954,7 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
           </div>
 
           {/* 시술 + 소요시간 */}
-          <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"flex-end"}}>
+          <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"flex-start"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술명</div>
               <button onClick={() => setShowS(true)}
@@ -911,7 +965,7 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
             <div style={{flex:1}}>
               <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>소요시간</div>
               <select value={f.mins} onChange={e=>set("mins",e.target.value)}
-                style={{width:"100%",padding:"9px 8px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,fontWeight:600,color:DK,background:WH,outline:"none",cursor:"pointer",appearance:"auto"}}>
+                style={{width:"100%",padding:"10px 8px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,fontWeight:600,color:DK,background:WH,outline:"none",cursor:"pointer",appearance:"auto"}}>
                 {[30,45,60,75,90,120,150,180].map(m=><option key={m} value={m}>{m}분</option>)}
               </select>
             </div>
@@ -3565,7 +3619,7 @@ function ShopNameSetting({ shopName, onUpdate }) {
   );
 }
 
-function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers, onImportBookings, uid, onChangePassword, email }) {
+function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers, onImportBookings, uid, onChangePassword, email, naverUrl="", onUpdateNaverUrl }) {
   const [sub, setSub] = useState(initialSub||null);
   const [sl, setSl] = useState(staff);
   const [newN, setNewN] = useState("");
@@ -3575,6 +3629,8 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [naverUrlEdit, setNaverUrlEdit] = useState(false);
+  const [naverUrlInput, setNaverUrlInput] = useState(naverUrl);
   const [showBkImport, setShowBkImport] = useState(false);
   const [naverBkText, setNaverBkText] = useState("");
   const [bkImporting, setBkImporting] = useState(false);
@@ -3877,6 +3933,26 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
           <span style={{fontSize:16,color:G3}}>›</span>
         </div>
       ))}
+      {onUpdateNaverUrl && (
+        <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2,borderLeft:"3px solid #03C75A"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#03C75A"}}>네이버 예약 바로가기 URL</div>
+            <button onClick={()=>{setNaverUrlEdit(v=>!v);setNaverUrlInput(naverUrl);}} style={{background:"none",border:"none",cursor:"pointer",color:"#03C75A",fontSize:12,fontWeight:600}}>{naverUrlEdit?"닫기":"설정"}</button>
+          </div>
+          <div style={{fontSize:11,color:G5,marginBottom:naverUrlEdit?10:0}}>
+            {naverUrl ? <span>홈 화면 상단 <b style={{color:"#009444"}}>N</b> 버튼으로 바로 이동</span> : "URL 설정 시 홈 상단에 네이버 바로가기 버튼이 생깁니다"}
+          </div>
+          {naverUrlEdit && (
+            <div style={{display:"flex",gap:7}}>
+              <input value={naverUrlInput} onChange={e=>setNaverUrlInput(e.target.value)}
+                placeholder="https://new.smartplace.naver.com/..."
+                style={{flex:1,padding:"9px 11px",borderRadius:9,border:"1.5px solid #03C75A",fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              <button onClick={()=>{onUpdateNaverUrl(naverUrlInput.trim());setNaverUrlEdit(false);}}
+                style={{padding:"9px 14px",borderRadius:9,background:"#03C75A",border:"none",color:WH,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>저장</button>
+            </div>
+          )}
+        </div>
+      )}
       {onImportCustomers && (
         <div style={{padding:"14px 18px",background:WH,borderBottom:"1px solid "+G2,borderLeft:"3px solid #03C75A"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -3954,6 +4030,8 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
 // ── 앱 루트 ───────────────────────────────────────────
 export default function App({ session, onLogout, onChangePassword }) {
   const uid = session?.uid;
+  // 저장된 시술메뉴를 앱 시작 시 복원
+  try { const s = localStorage.getItem(`svcMenu_${uid||"local"}`); if(s) SVCS = JSON.parse(s); } catch {}
   // Firestore 컬렉션 경로 헬퍼
   const col = (name) => collection(db, "modu_shops", uid, name);
   const ref = (name, id) => doc(db, "modu_shops", uid, name, id);
@@ -3965,6 +4043,7 @@ export default function App({ session, onLogout, onChangePassword }) {
   const [menuOpen, setMenu] = useState(false);
   const [ttDate, setTtDate] = useState(TODAY);
   const [shopName, setShopName] = useState(() => localStorage.getItem("shopName") || session?.shopName || "Modu Beauty");
+  const [naverUrl, setNaverUrl] = useState(() => localStorage.getItem("naverUrl") || "");
   const [modal, setModal] = useState(null);
   const [settingsSub, setSettingsSub] = useState(null);
   const [staff, setStaff] = useState([{id:0,name:"담당자1",bg:PS},{id:1,name:"담당자2",bg:WH}]);
@@ -4267,7 +4346,10 @@ export default function App({ session, onLogout, onChangePassword }) {
               <div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:13,height:2,background:DK,borderRadius:2}}/>
             </button>
             <span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:P,letterSpacing:-0.5,whiteSpace:"nowrap",pointerEvents:"none"}}>{shopName}</span>
-            <div style={{width:26}}/>
+            {naverUrl ? (
+              <a href={naverUrl} target="_blank" rel="noreferrer"
+                style={{padding:"4px 9px",borderRadius:8,background:"#E8F9EE",border:"1px solid #03C75A",color:"#009444",fontSize:11,fontWeight:800,textDecoration:"none",lineHeight:1.4}}>N</a>
+            ) : <div style={{width:26}}/>}
           </div>
         </div>
       )}
@@ -4279,7 +4361,7 @@ export default function App({ session, onLogout, onChangePassword }) {
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
-        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking}/>}
+        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking} naverUrl={naverUrl} onUpdateNaverUrl={u=>{setNaverUrl(u);localStorage.setItem("naverUrl",u);}}/>}
       </div>
 
       {/* 하단 탭 */}
