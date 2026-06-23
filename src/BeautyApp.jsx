@@ -2706,7 +2706,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                   const idx=BKS.findIndex(x=>x.id===b.id);
                   if(idx>=0) BKS[idx]={...BKS[idx],status:ns};
                   setSwipeMap(p=>({...p,[b.id]:0}));
-                }} style={{flex:1,border:"none",background:isNoshow?"#CC1A3A":RD,color:WH,fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                }} style={{flex:1,border:"none",background:RD,color:WH,fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,opacity:isNoshow?1:0.85}}>
                   <span style={{fontSize:12,fontWeight:700}}>{isNoshow?"✓":"N"}</span>
                   {isNoshow?"해제":"노쇼"}
                 </button>
@@ -2716,12 +2716,12 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                   const idx=BKS.findIndex(x=>x.id===b.id);
                   if(idx>=0) BKS[idx]={...BKS[idx],status:ns};
                   setSwipeMap(p=>({...p,[b.id]:0}));
-                }} style={{flex:1,border:"none",background:isCancel?"#4A6B6A":G5,color:WH,fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                }} style={{flex:1,border:"none",background:G5,color:WH,fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,opacity:isCancel?1:0.85}}>
                   <span style={{fontSize:13}}>{isCancel?"✓":"✕"}</span>
                   {isCancel?"해제":"취소"}
                 </button>
                 <button onClick={()=>{if(!isPaid&&onPay){onPay(b);setSwipeMap(p=>({...p,[b.id]:0}));}}}
-                  style={{flex:1,border:"none",background:isPaid?OR:P,color:WH,fontSize:10,fontWeight:700,cursor:isPaid?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                  style={{flex:1,border:"none",background:P,color:WH,fontSize:10,fontWeight:700,cursor:isPaid?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
                   <span style={{fontSize:12,fontWeight:700}}>{isPaid?"✓":"₩"}</span>
                   {isPaid?"완료":"결제"}
                 </button>
