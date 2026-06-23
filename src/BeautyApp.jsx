@@ -4062,7 +4062,7 @@ export default function App({ session, onLogout }) {
         prodTotal,
         prodMemo,
         bonus,
-        date: TODAY,
+        date: showPay.date||TODAY,
         custName: showPay.name,
         ...(payMethod==="prepaid_new" ? {chargeAmt: charge, chargeBonus: bonus} : {}),
       }
@@ -4073,19 +4073,22 @@ export default function App({ session, onLogout }) {
       const name = showPay.name;
       const idx = nd.findIndex(d=>d.custName===name);
       if(payMethod==="prepaid") {
-        if(idx>=0) nd[idx]={...nd[idx],balance:Math.max(0,nd[idx].balance-paidAmt),history:[...nd[idx].history,{id:Date.now(),type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]};
+        const bkDate=showPay.date||TODAY;
+        if(idx>=0) nd[idx]={...nd[idx],balance:Math.max(0,nd[idx].balance-paidAmt),history:[...nd[idx].history,{id:Date.now(),type:"use",amount:paidAmt,date:bkDate,memo:showPay.svc+" 결제"}]};
       } else if(payMethod==="prepaid_new") {
+        const bkDate=showPay.date||TODAY;
         const chargeMemo=charge.toLocaleString()+"원 충전"+(bonus>0?" (+보너스 "+bonus.toLocaleString()+"원)":"");
         if(idx>=0) {
           nd[idx]={...nd[idx],total:nd[idx].total+charge+bonus,balance:nd[idx].balance+charge+bonus-paidAmt,
-            history:[...nd[idx].history,{id:Date.now(),type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},{id:Date.now()+1,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]};
+            history:[...nd[idx].history,{id:Date.now(),type:"charge",amount:charge+bonus,date:bkDate,memo:chargeMemo},{id:Date.now()+1,type:"use",amount:paidAmt,date:bkDate,memo:showPay.svc+" 결제"}]};
         } else {
           nd=[...nd,{custId:Date.now(),custName:name,balance:charge+bonus-paidAmt,total:charge+bonus,
-            history:[{id:1,type:"charge",amount:charge+bonus,date:TODAY,memo:chargeMemo},{id:2,type:"use",amount:paidAmt,date:TODAY,memo:showPay.svc+" 결제"}]}];
+            history:[{id:1,type:"charge",amount:charge+bonus,date:bkDate,memo:chargeMemo},{id:2,type:"use",amount:paidAmt,date:bkDate,memo:showPay.svc+" 결제"}]}];
         }
       } else if(bonus>0) {
-        if(idx>=0) nd[idx]={...nd[idx],balance:nd[idx].balance+bonus,total:nd[idx].total+bonus,history:[...nd[idx].history,{id:Date.now(),type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]};
-        else nd=[...nd,{custId:Date.now(),custName:name,balance:bonus,total:bonus,history:[{id:1,type:"charge",amount:bonus,date:TODAY,memo:methodLabel+" 결제 적립 보너스"}]}];
+        const bkDate=showPay.date||TODAY;
+        if(idx>=0) nd[idx]={...nd[idx],balance:nd[idx].balance+bonus,total:nd[idx].total+bonus,history:[...nd[idx].history,{id:Date.now(),type:"charge",amount:bonus,date:bkDate,memo:methodLabel+" 결제 적립 보너스"}]};
+        else nd=[...nd,{custId:Date.now(),custName:name,balance:bonus,total:bonus,history:[{id:1,type:"charge",amount:bonus,date:bkDate,memo:methodLabel+" 결제 적립 보너스"}]}];
       }
       return nd;
     });
