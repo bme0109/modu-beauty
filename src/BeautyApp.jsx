@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { db } from "./firebase";
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -53,7 +53,7 @@ const HOLS = {
   "2025-12-25": "크리스마스",
 };
 
-const SVCS = [
+let SVCS = [
   { id:"nail", label:"네일", items:[
     {id:1,name:"젤네일 단색",mins:60,price:40000},
     {id:2,name:"젤네일 아트",mins:90,price:65000},
@@ -3400,8 +3400,10 @@ const INIT_SVCS = [
   {id:"wax",label:"왁싱",items:[{id:9,name:"다리왁싱",mins:60,price:60000},{id:10,name:"브라질리언",mins:60,price:70000}]},
 ];
 
-function ServiceMenuPage({ onBack }) {
-  const [cats, setCats] = useState(INIT_SVCS);
+function ServiceMenuPage({ onBack, uid }) {
+  const svcKey = `svcMenu_${uid||"local"}`;
+  const [saved, setSaved] = useState(false);
+  const [cats, setCats] = useState(() => { try { const s=localStorage.getItem(svcKey); return s?JSON.parse(s):SVCS; } catch { return SVCS; } });
   const [editId, setEditId] = useState(null);
   const [editF, setEditF] = useState({name:"",mins:60,price:0});
   const [showAdd, setShowAdd] = useState(null);
@@ -3419,13 +3421,14 @@ function ServiceMenuPage({ onBack }) {
     setNewItem({name:"",mins:60,price:0}); setShowAdd(null);
   }
   function addCat() { if(!newCatN.trim()) return; setCats(p=>[...p,{id:"cat"+Date.now(),label:newCatN.trim(),items:[]}]); setNewCatN(""); setShowCat(false); }
+  function saveMenu(latestCats) { try { localStorage.setItem(svcKey, JSON.stringify(latestCats)); } catch {} SVCS=latestCats; setSaved(true); setTimeout(()=>setSaved(false),2000); }
 
   return (
     <div style={{minHeight:"100vh",background:BG,paddingBottom:40}}>
       <div style={{background:WH,padding:"13px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>‹ 뒤로</button>
         <span style={{fontSize:15,fontWeight:800,color:DK}}>시술메뉴 관리</span>
-        <div style={{width:40}}/>
+        <button onClick={()=>saveMenu(cats)} style={{background:saved?"none":P,border:"none",color:saved?G5:WH,fontSize:13,fontWeight:700,cursor:"pointer",padding:"6px 12px",borderRadius:10}}>{saved?"저장완료":"저장하기"}</button>
       </div>
       {cats.map(cat => (
         <div key={cat.id} style={{marginBottom:8}}>
@@ -3553,7 +3556,7 @@ function ShopNameSetting({ shopName, onUpdate }) {
   );
 }
 
-function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers, onImportBookings }) {
+function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers, onImportBookings, uid }) {
   const [sub, setSub] = useState(initialSub||null);
   const [sl, setSl] = useState(staff);
   const [newN, setNewN] = useState("");
@@ -3762,7 +3765,7 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
     </div>
   );
 
-  if(sub==="svcmenu") return <ServiceMenuPage onBack={goBack}/>;
+  if(sub==="svcmenu") return <ServiceMenuPage onBack={goBack} uid={uid}/>;
   if(sub==="prepaid") return <PrepaidPage onBack={goBack}/>;
 
   if(sub==="bonus") {
