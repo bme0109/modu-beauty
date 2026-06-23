@@ -2736,7 +2736,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:700,color:isCancel?G5:isNoshow?RD:isPaid?GR:DK,textDecoration:isCancel?"line-through":"none"}}>
                     {b.name}
-                    {isPaid&&!isCancel&&!isNoshow&&<span style={{fontSize:9,color:GR,fontWeight:600,marginLeft:6}}>결제완료</span>}}
+                    {isPaid&&!isCancel&&!isNoshow&&<span style={{fontSize:9,color:GR,fontWeight:600,marginLeft:6}}>결제완료</span>}
                     {isCancel&&<span style={{fontSize:9,color:G5,fontWeight:700,marginLeft:6,background:G3,padding:"1px 5px",borderRadius:4}}>취소</span>}
                     {isNoshow&&<span style={{fontSize:9,color:RD,fontWeight:700,marginLeft:6,background:RD+"20",padding:"1px 5px",borderRadius:4}}>노쇼</span>}
                   </div>
