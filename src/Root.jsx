@@ -4,7 +4,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import LoginPage from "./LoginPage";
@@ -50,6 +53,14 @@ export default function Root() {
     await signOut(auth);
   }
 
+  async function handleChangePassword(currentPassword, newPassword) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("로그인 상태가 아닙니다.");
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+  }
+
   // 초기 로딩 스플래시
   if (loading) {
     return (
@@ -87,5 +98,5 @@ export default function Root() {
     return <LoginPage onLogin={handleLogin} onSignup={handleSignup} />;
   }
 
-  return <BeautyApp session={session} onLogout={handleLogout} />;
+  return <BeautyApp session={session} onLogout={handleLogout} onChangePassword={handleChangePassword} />;
 }

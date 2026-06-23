@@ -3565,7 +3565,7 @@ function ShopNameSetting({ shopName, onUpdate }) {
   );
 }
 
-function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers, onImportBookings, uid }) {
+function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates, onUpdateBonus, slotUnit, onUpdateSlotUnit, shopName, onUpdateShopName, onImportCustomers, onImportBookings, uid, onChangePassword, email }) {
   const [sub, setSub] = useState(initialSub||null);
   const [sl, setSl] = useState(staff);
   const [newN, setNewN] = useState("");
@@ -3579,6 +3579,11 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
   const [naverBkText, setNaverBkText] = useState("");
   const [bkImporting, setBkImporting] = useState(false);
   const [bkImportResult, setBkImportResult] = useState(null);
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwMsg, setPwMsg] = useState(null);
+  const [pwLoading, setPwLoading] = useState(false);
   const [bkImportSid, setBkImportSid] = useState(() => staff[0]?.id ?? 0);
 
   function parseNaverText(txt) {
@@ -3774,6 +3779,52 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
     </div>
   );
 
+  if(sub==="account") return (
+    <div style={{minHeight:"100vh",background:BG}}>
+      <div style={{background:WH,padding:"13px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
+        <button onClick={goBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600}}>‹ 뒤로</button>
+        <span style={{fontSize:15,fontWeight:800,color:DK}}>계정 정보</span>
+        <div style={{width:40}}/>
+      </div>
+      <div style={{padding:"18px"}}>
+        <div style={{background:WH,borderRadius:14,padding:"16px",marginBottom:16}}>
+          <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:6,letterSpacing:0.3}}>로그인 이메일</div>
+          <div style={{fontSize:14,fontWeight:600,color:DK}}>{email||"-"}</div>
+        </div>
+        <div style={{background:WH,borderRadius:14,padding:"16px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:DK,marginBottom:14}}>비밀번호 변경</div>
+          {[
+            {label:"현재 비밀번호",val:pwCurrent,set:setPwCurrent},
+            {label:"새 비밀번호",val:pwNew,set:setPwNew},
+            {label:"새 비밀번호 확인",val:pwConfirm,set:setPwConfirm},
+          ].map(f=>(
+            <div key={f.label} style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:6}}>{f.label}</div>
+              <input type="password" value={f.val} onChange={e=>f.set(e.target.value)}
+                style={{width:"100%",padding:"11px 13px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:BG,boxSizing:"border-box"}}/>
+            </div>
+          ))}
+          {pwMsg && <div style={{padding:"10px 13px",borderRadius:10,background:pwMsg.ok?GRL:RD+"20",color:pwMsg.ok?GR:RD,fontSize:12,fontWeight:600,marginBottom:12}}>{pwMsg.text}</div>}
+          <button disabled={pwLoading||!pwCurrent||!pwNew||!pwConfirm} onClick={async()=>{
+            if(pwNew!==pwConfirm){setPwMsg({ok:false,text:"새 비밀번호가 일치하지 않습니다."});return;}
+            if(pwNew.length<6){setPwMsg({ok:false,text:"비밀번호는 6자 이상이어야 합니다."});return;}
+            setPwLoading(true);setPwMsg(null);
+            try{
+              await onChangePassword(pwCurrent,pwNew);
+              setPwMsg({ok:true,text:"비밀번호가 변경되었습니다."});
+              setPwCurrent("");setPwNew("");setPwConfirm("");
+            }catch(e){
+              const msg=e.code==="auth/wrong-password"||e.code==="auth/invalid-credential"?"현재 비밀번호가 올바르지 않습니다.":e.code==="auth/too-many-requests"?"요청이 너무 많습니다. 잠시 후 다시 시도해주세요.":"오류가 발생했습니다. 다시 시도해주세요.";
+              setPwMsg({ok:false,text:msg});
+            }finally{setPwLoading(false);}
+          }}
+            style={{width:"100%",padding:"13px",borderRadius:13,background:pwLoading||!pwCurrent||!pwNew||!pwConfirm?G2:P,border:"none",color:pwLoading||!pwCurrent||!pwNew||!pwConfirm?G5:WH,fontSize:13,fontWeight:700,cursor:pwLoading||!pwCurrent||!pwNew||!pwConfirm?"default":"pointer"}}>
+            {pwLoading?"변경 중...":"비밀번호 변경"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
   if(sub==="svcmenu") return <ServiceMenuPage onBack={goBack} uid={uid}/>;
   if(sub==="prepaid") return <PrepaidPage onBack={goBack}/>;
 
@@ -3815,6 +3866,7 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
         {l:"운영시간 설정",s:sh+" ~ "+eh,a:()=>setSub("time")},
         {l:"테마 변경",s:"White Lavender",a:null},
         {l:"공지사항",s:"업데이트 및 공지",a:null},
+        {l:"계정 정보",s:email||"",a:()=>setSub("account")},
       ].map((item,i) => (
         <div key={i} onClick={item.a||undefined}
           style={{background:WH,borderBottom:"1px solid "+G2,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:item.a?"pointer":"default"}}>
@@ -3900,7 +3952,7 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
 }
 
 // ── 앱 루트 ───────────────────────────────────────────
-export default function App({ session, onLogout }) {
+export default function App({ session, onLogout, onChangePassword }) {
   const uid = session?.uid;
   // Firestore 컬렉션 경로 헬퍼
   const col = (name) => collection(db, "modu_shops", uid, name);
