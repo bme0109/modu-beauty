@@ -2573,6 +2573,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   const [smsEdit, setSmsEdit] = useState(null);
   const [editBk, setEditBk] = useState(null);
   const [delConfirmBk, setDelConfirmBk] = useState(null);
+  const [showStatusDrop, setShowStatusDrop] = useState(false);
   const [swipeMap, setSwipeMap] = useState({});
   const [swipeTouchX, setSwipeTouchX] = useState({});
   const [selDate, setSelDate] = useState(TODAY);
@@ -2934,34 +2935,46 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
               )}
             </div>
             {!paidBks[showBk.id] && (
-              <>
-                <div style={{display:"flex",gap:8,marginTop:14}}>
-                  {["cancel","noshow"].map(s=>{
-                    const active=showBk.status===s;
-                    const label=s==="cancel"?"취소":"노쇼";
-                    const col=s==="cancel"?G5:RD;
-                    return (
-                      <button key={s} onClick={()=>{
-                        const ns=active?undefined:s;
-                        if(onUpdate) onUpdate(showBk,{status:ns});
-                        const idx=BKS.findIndex(x=>x.id===showBk.id);
-                        if(idx>=0) BKS[idx]={...BKS[idx],status:ns};
-                        setShowBk(p=>({...p,status:ns}));
-                      }} style={{flex:1,padding:"10px",borderRadius:12,border:"1.5px solid "+(active?col:G2),background:active?col+"15":WH,color:active?col:G5,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                        {active?"✓ "+label+" 해제":label+" 처리"}
-                      </button>
-                    );
-                  })}
+              <div style={{display:"flex",gap:9,marginTop:14}}>
+                <div style={{flex:1,position:"relative"}}>
+                  <button onClick={()=>setShowStatusDrop(p=>!p)}
+                    style={{width:"100%",padding:"13px 6px",borderRadius:14,background:showBk.status==="cancel"?G5+"22":showBk.status==="noshow"?RD+"22":WH,border:"1.5px solid "+(showBk.status==="cancel"?G5:showBk.status==="noshow"?RD:G2),color:showBk.status==="cancel"?G5:showBk.status==="noshow"?RD:G7,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                    {showBk.status==="cancel"?"● 취소":showBk.status==="noshow"?"● 노쇼":"상태 ▾"}
+                  </button>
+                  {showStatusDrop && (
+                    <>
+                      <div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setShowStatusDrop(false)}/>
+                      <div style={{position:"absolute",bottom:"calc(100% + 6px)",left:0,minWidth:140,background:WH,borderRadius:13,boxShadow:"0 4px 24px rgba(0,0,0,0.2)",border:"1px solid "+G2,overflow:"hidden",zIndex:200}}>
+                        {[{s:"cancel",label:"취소",col:G5},{s:"noshow",label:"노쇼",col:RD}].map(({s,label,col})=>{
+                          const active=showBk.status===s;
+                          return (
+                            <button key={s} onClick={()=>{
+                              const ns=active?undefined:s;
+                              if(onUpdate) onUpdate(showBk,{status:ns});
+                              const idx=BKS.findIndex(x=>x.id===showBk.id);
+                              if(idx>=0) BKS[idx]={...BKS[idx],status:ns};
+                              setShowBk(p=>({...p,status:ns}));
+                              setShowStatusDrop(false);
+                            }} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"12px 14px",background:active?col+"18":"none",border:"none",borderBottom:"1px solid "+G2,color:active?col:DK,fontSize:13,fontWeight:active?700:500,cursor:"pointer",boxSizing:"border-box"}}>
+                              <span style={{width:10,height:10,borderRadius:"50%",background:col,display:"inline-block",flexShrink:0}}/>
+                              {active?"✓ "+label+" 해제":label+" 처리"}
+                            </button>
+                          );
+                        })}
+                        <button onClick={()=>{setDelConfirmBk(showBk);setShowStatusDrop(false);}}
+                          style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"12px 14px",background:"none",border:"none",color:RD,fontSize:13,fontWeight:600,cursor:"pointer",boxSizing:"border-box"}}>
+                          <span style={{width:10,height:10,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:RD,flexShrink:0}}>✕</span>
+                          삭제
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div style={{display:"flex",gap:9,marginTop:8}}>
-                  <button onClick={() => setDelConfirmBk(showBk)}
-                    style={{padding:"13px 12px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>삭제</button>
-                  <button onClick={() => { setEditBk({...showBk}); setShowBk(null); }}
-                    style={{flex:1,padding:"13px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>수정</button>
-                  <button onClick={() => {if(onPay){onPay(showBk);setShowBk(null);}}}
-                    style={{flex:2,padding:"13px",borderRadius:14,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 14px "+P+"44"}}>결제 처리</button>
-                </div>
-              </>
+                <button onClick={()=>{setEditBk({...showBk});setShowBk(null);setShowStatusDrop(false);}}
+                  style={{flex:1,padding:"13px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>수정</button>
+                <button onClick={()=>{if(onPay){onPay(showBk);setShowBk(null);setShowStatusDrop(false);}}}
+                  style={{flex:1,padding:"13px",borderRadius:14,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 14px "+P+"44"}}>결제 처리</button>
+              </div>
             )}
             {paidBks[showBk.id] && (
               <div style={{display:"flex",gap:9,marginTop:12}}>
