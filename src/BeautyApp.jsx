@@ -216,9 +216,9 @@ function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=
         </div>
 
         {/* 날짜 + 예약 시간 - 한 줄 병렬 */}
-        <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"flex-start"}}>
+        <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"flex-start"}}>
           {/* 날짜 */}
-          <div style={{flex:1}}>
+          <div style={{flex:2}}>
             <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>날짜</div>
             <button onClick={() => {setShowCal(v=>!v); setShowTime(false); setShowSvc(false);}}
               style={{width:"100%",padding:"11px 10px",borderRadius:10,border:"1.5px solid "+(showCal?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
@@ -261,7 +261,7 @@ function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=
           </div>
 
           {/* 예약 시간 */}
-          <div style={{flex:"0 0 100px"}}>
+          <div style={{flex:1}}>
             <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시간</div>
             <button onClick={() => {setShowTime(v=>!v); setShowCal(false); setShowSvc(false);}}
               style={{width:"100%",padding:"11px 10px",borderRadius:10,border:"1.5px solid "+(showTime?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
@@ -284,8 +284,8 @@ function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=
         </div>
 
         {/* 시술명 + 소요시간 */}
-        <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"flex-start"}}>
-          <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"flex-start"}}>
+          <div style={{flex:2,minWidth:0}}>
             <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술명</div>
             <button onClick={() => {setShowSvc(v=>!v); setShowCal(false); setShowTime(false);}}
               style={{width:"100%",padding:"11px 12px",borderRadius:10,border:"1.5px solid "+(showSvc?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
@@ -310,10 +310,10 @@ function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=
               </div>
             )}
           </div>
-          <div style={{flexShrink:0,width:82}}>
+          <div style={{flex:1}}>
             <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>소요시간</div>
             <select value={editBk.mins} onChange={e=>setEditBk(p=>({...p,mins:Number(e.target.value)}))}
-              style={{width:"100%",padding:"10px 8px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,fontWeight:600,color:DK,background:WH,outline:"none",cursor:"pointer",appearance:"auto"}}>
+              style={{width:"100%",padding:"11px 10px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,fontWeight:600,color:DK,background:WH,outline:"none",cursor:"pointer",appearance:"auto",boxSizing:"border-box"}}>
               {[30,45,60,75,90,120,150,180].map(m=><option key={m} value={m}>{m}분</option>)}
             </select>
           </div>
@@ -908,7 +908,7 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
                 {f.svc || "시술 선택"}
               </button>
             </div>
-            <div style={{flexShrink:0,width:82}}>
+            <div style={{flex:1}}>
               <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>소요시간</div>
               <select value={f.mins} onChange={e=>set("mins",e.target.value)}
                 style={{width:"100%",padding:"9px 8px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,fontWeight:600,color:DK,background:WH,outline:"none",cursor:"pointer",appearance:"auto"}}>
@@ -2700,7 +2700,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                   if(idx>=0) BKS[idx]={...BKS[idx],status:ns};
                   setSwipeMap(p=>({...p,[b.id]:0}));
                 }} style={{flex:1,border:"none",background:isNoshow?"#CC1A3A":RD,color:WH,fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
-                  <span style={{fontSize:13}}>{isNoshow?"✓":"👻"}</span>
+                  <span style={{fontSize:12,fontWeight:700}}>{isNoshow?"✓":"N"}</span>
                   {isNoshow?"해제":"노쇼"}
                 </button>
                 <button onClick={()=>{
@@ -2715,12 +2715,12 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                 </button>
                 <button onClick={()=>{if(!isPaid&&onPay){onPay(b);setSwipeMap(p=>({...p,[b.id]:0}));}}}
                   style={{flex:1,border:"none",background:isPaid?OR:P,color:WH,fontSize:10,fontWeight:700,cursor:isPaid?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
-                  <span style={{fontSize:13}}>{isPaid?"✓":"💳"}</span>
+                  <span style={{fontSize:12,fontWeight:700}}>{isPaid?"✓":"₩"}</span>
                   {isPaid?"완료":"결제"}
                 </button>
               </div>
               <div onClick={() => {setSwipeMap(p => ({...p,[b.id]:0}));setShowBk(b);}}
-                style={{background:cardBg,borderRadius:13,padding:"12px 13px",display:"flex",alignItems:"center",border:"1px solid "+cardBorder,cursor:"pointer",transform:"translateX("+swipeX+"px)",transition:swipeTouchX[b.id]?"none":"transform 0.2s",position:"relative",zIndex:1,opacity:isCancel?0.6:1}}>
+                style={{background:cardBg,borderRadius:13,padding:"12px 13px",display:"flex",alignItems:"center",border:"1px solid "+cardBorder,cursor:"pointer",transform:"translateX("+swipeX+"px)",transition:swipeTouchX[b.id]?"none":"transform 0.2s",position:"relative",zIndex:1,opacity:isCancel?0.6:1,width:"100%",boxSizing:"border-box"}}>
                 <div style={{width:3,alignSelf:"stretch",background:accentColor,borderRadius:2,marginRight:11,flexShrink:0}}/>
                 <div style={{minWidth:44}}>
                   <span style={{fontSize:15,fontWeight:800,color:accentColor}}>{b.time}</span>
