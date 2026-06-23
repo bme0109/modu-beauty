@@ -283,43 +283,39 @@ function EditBookingSheet({ editBk, setEditBk, staff, onSave, onClose, slotUnit=
           </div>
         </div>
 
-        {/* 시술명 */}
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술명</div>
-          <button onClick={() => {setShowSvc(v=>!v); setShowCal(false); setShowTime(false);}}
-            style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1.5px solid "+(showSvc?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
-            <span style={{fontSize:13,fontWeight:600,color:editBk.svc?DK:G5}}>{editBk.svc||"시술 선택"}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={showSvc?P:G5} strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          {showSvc && (
-            <div style={{marginTop:6,background:PS,borderRadius:12,padding:"8px",border:"1px solid "+G2,maxHeight:200,overflowY:"auto"}}>
-              <input
-                value={editBk.svc}
-                onChange={e => setEditBk(p=>({...p,svc:e.target.value}))}
-                placeholder="직접 입력..."
-                style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box",marginBottom:6}}
-              />
-              {SVCS.flatMap(cat => cat.items).map(s => (
-                <div key={s.id} onClick={() => {setEditBk(p=>({...p,svc:s.name,mins:s.mins,price:s.price})); setShowSvc(false);}}
-                  style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",background:editBk.svc===s.name?P:"transparent",marginBottom:2}}>
-                  <span style={{fontSize:12,fontWeight:editBk.svc===s.name?700:400,color:editBk.svc===s.name?WH:DK}}>{s.name}</span>
-                  <span style={{fontSize:11,color:editBk.svc===s.name?"rgba(255,255,255,0.7)":G5,marginLeft:8}}>{s.price.toLocaleString()}원 · {s.mins}분</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 시술 시간 */}
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술 시간</div>
-          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-            {[30,60,90,120,150,180].map(m => (
-              <button key={m} onClick={() => setEditBk(p=>({...p,mins:m}))}
-                style={{padding:"7px 14px",borderRadius:10,border:editBk.mins===m?"none":"1px solid "+G2,background:editBk.mins===m?P:WH,color:editBk.mins===m?WH:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                {m}분
-              </button>
-            ))}
+        {/* 시술명 + 소요시간 */}
+        <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"flex-start"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술명</div>
+            <button onClick={() => {setShowSvc(v=>!v); setShowCal(false); setShowTime(false);}}
+              style={{width:"100%",padding:"11px 12px",borderRadius:10,border:"1.5px solid "+(showSvc?P:G2),background:WH,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",boxSizing:"border-box"}}>
+              <span style={{fontSize:12,fontWeight:600,color:editBk.svc?DK:G5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{editBk.svc||"시술 선택"}</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={showSvc?P:G5} strokeWidth="2.5" style={{flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {showSvc && (
+              <div style={{marginTop:6,background:PS,borderRadius:12,padding:"8px",border:"1px solid "+G2,maxHeight:200,overflowY:"auto"}}>
+                <input
+                  value={editBk.svc}
+                  onChange={e => setEditBk(p=>({...p,svc:e.target.value}))}
+                  placeholder="직접 입력..."
+                  style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box",marginBottom:6}}
+                />
+                {SVCS.flatMap(cat => cat.items).map(s => (
+                  <div key={s.id} onClick={() => {setEditBk(p=>({...p,svc:s.name,mins:s.mins,price:s.price})); setShowSvc(false);}}
+                    style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",background:editBk.svc===s.name?P:"transparent",marginBottom:2}}>
+                    <span style={{fontSize:12,fontWeight:editBk.svc===s.name?700:400,color:editBk.svc===s.name?WH:DK}}>{s.name}</span>
+                    <span style={{fontSize:11,color:editBk.svc===s.name?"rgba(255,255,255,0.7)":G5,marginLeft:8}}>{s.price.toLocaleString()}원 · {s.mins}분</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{flexShrink:0,width:82}}>
+            <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>소요시간</div>
+            <select value={editBk.mins} onChange={e=>setEditBk(p=>({...p,mins:Number(e.target.value)}))}
+              style={{width:"100%",padding:"10px 8px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,fontWeight:600,color:DK,background:WH,outline:"none",cursor:"pointer",appearance:"auto"}}>
+              {[30,45,60,75,90,120,150,180].map(m=><option key={m} value={m}>{m}분</option>)}
+            </select>
           </div>
         </div>
 
@@ -903,20 +899,28 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
             )}
           </div>
 
-          {/* 시술 */}
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술</div>
-            <button onClick={() => setShowS(true)}
-              style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+(f.svc?P:G2),fontSize:13,background:WH,textAlign:"left",cursor:"pointer",color:f.svc?DK:G5,boxSizing:"border-box"}}>
-              {f.svc || "시술 선택"}
-            </button>
-            {f.svc && (
-              <div style={{marginTop:7,padding:"10px 12px",background:PL,borderRadius:9,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:11,color:P,fontWeight:600}}>⏱ {f.mins}분</span>
-                {f.svcPrice && <span style={{fontSize:12,color:P,fontWeight:700}}>{Number(f.svcPrice).toLocaleString()}원</span>}
-              </div>
-            )}
+          {/* 시술 + 소요시간 */}
+          <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"flex-end"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>시술명</div>
+              <button onClick={() => setShowS(true)}
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+(f.svc?P:G2),fontSize:13,background:WH,textAlign:"left",cursor:"pointer",color:f.svc?DK:G5,boxSizing:"border-box",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                {f.svc || "시술 선택"}
+              </button>
+            </div>
+            <div style={{flexShrink:0,width:82}}>
+              <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:7,letterSpacing:0.3}}>소요시간</div>
+              <select value={f.mins} onChange={e=>set("mins",e.target.value)}
+                style={{width:"100%",padding:"9px 8px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,fontWeight:600,color:DK,background:WH,outline:"none",cursor:"pointer",appearance:"auto"}}>
+                {[30,45,60,75,90,120,150,180].map(m=><option key={m} value={m}>{m}분</option>)}
+              </select>
+            </div>
           </div>
+          {f.svc && f.svcPrice && (
+            <div style={{marginBottom:14,marginTop:-8,padding:"8px 12px",background:PL,borderRadius:9}}>
+              <span style={{fontSize:12,color:P,fontWeight:700}}>{Number(f.svcPrice).toLocaleString()}원</span>
+            </div>
+          )}
 
           {/* 예약금 수단 + 금액 */}
           <div style={{marginBottom:14}}>
@@ -2669,6 +2673,12 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
         {fil.map(b => {
           const swipeX=swipeMap[b.id]||0;
           const isPaid=!!paidBks[b.id];
+          const bStatus=b.status;
+          const isCancel=bStatus==="cancel";
+          const isNoshow=bStatus==="noshow";
+          const cardBg=isCancel?G2:isNoshow?"#FFF0F0":isPaid?ORL:WH;
+          const cardBorder=isCancel?G5:isNoshow?RD+"60":isPaid?OR+"60":G2;
+          const accentColor=isCancel?G5:isNoshow?RD:isPaid?OR:P;
           return (
             <div key={b.id} style={{position:"relative",marginBottom:7,overflow:"hidden",borderRadius:13}}
               onTouchStart={e => setSwipeTouchX(p => ({...p,[b.id]:e.touches[0].clientX}))}
@@ -2688,20 +2698,22 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                 </button>
               </div>
               <div onClick={() => {setSwipeMap(p => ({...p,[b.id]:0}));setShowBk(b);}}
-                style={{background:isPaid?ORL:WH,borderRadius:13,padding:"12px 13px",display:"flex",alignItems:"center",border:"1px solid "+(isPaid?OR+"60":G2),cursor:"pointer",transform:"translateX("+swipeX+"px)",transition:swipeTouchX[b.id]?"none":"transform 0.2s",position:"relative",zIndex:1}}>
-                <div style={{width:3,alignSelf:"stretch",background:isPaid?OR:P,borderRadius:2,marginRight:11,flexShrink:0}}/>
+                style={{background:cardBg,borderRadius:13,padding:"12px 13px",display:"flex",alignItems:"center",border:"1px solid "+cardBorder,cursor:"pointer",transform:"translateX("+swipeX+"px)",transition:swipeTouchX[b.id]?"none":"transform 0.2s",position:"relative",zIndex:1,opacity:isCancel?0.6:1}}>
+                <div style={{width:3,alignSelf:"stretch",background:accentColor,borderRadius:2,marginRight:11,flexShrink:0}}/>
                 <div style={{minWidth:44}}>
-                  <span style={{fontSize:15,fontWeight:800,color:isPaid?OR:P}}>{b.time}</span>
+                  <span style={{fontSize:15,fontWeight:800,color:accentColor}}>{b.time}</span>
                 </div>
                 <div style={{marginRight:6}}><Badge dep={b.dep}/></div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:700,color:isPaid?OR:DK}}>
+                  <div style={{fontSize:13,fontWeight:700,color:isCancel?G5:isNoshow?RD:isPaid?OR:DK,textDecoration:isCancel?"line-through":"none"}}>
                     {b.name}
-                    {isPaid&&<span style={{fontSize:9,color:OR,fontWeight:600,marginLeft:6}}>결제완료</span>}
+                    {isPaid&&!isCancel&&!isNoshow&&<span style={{fontSize:9,color:OR,fontWeight:600,marginLeft:6}}>결제완료</span>}
+                    {isCancel&&<span style={{fontSize:9,color:G5,fontWeight:700,marginLeft:6,background:G3,padding:"1px 5px",borderRadius:4}}>취소</span>}
+                    {isNoshow&&<span style={{fontSize:9,color:RD,fontWeight:700,marginLeft:6,background:RD+"20",padding:"1px 5px",borderRadius:4}}>노쇼</span>}
                   </div>
                   <div style={{fontSize:10,color:G5}}>담당자{b.sid+1} · {b.svc}</div>
                 </div>
-                <span style={{fontSize:12,fontWeight:600,color:isPaid?OR:DK}}>{isPaid?(paidBks[b.id].amount||paidBks[b.id].paidAmt||0).toLocaleString():b.price.toLocaleString()}원</span>
+                <span style={{fontSize:12,fontWeight:600,color:accentColor}}>{isPaid?(paidBks[b.id].amount||paidBks[b.id].paidAmt||0).toLocaleString():b.price.toLocaleString()}원</span>
               </div>
             </div>
           );
@@ -2922,14 +2934,34 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
               )}
             </div>
             {!paidBks[showBk.id] && (
-              <div style={{display:"flex",gap:9,marginTop:16}}>
-                <button onClick={() => setDelConfirmBk(showBk)}
-                  style={{padding:"13px 12px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>삭제</button>
-                <button onClick={() => { setEditBk({...showBk}); setShowBk(null); }}
-                  style={{flex:1,padding:"13px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>수정</button>
-                <button onClick={() => {if(onPay){onPay(showBk);setShowBk(null);}}}
-                  style={{flex:2,padding:"13px",borderRadius:14,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 14px "+P+"44"}}>결제 처리</button>
-              </div>
+              <>
+                <div style={{display:"flex",gap:8,marginTop:14}}>
+                  {["cancel","noshow"].map(s=>{
+                    const active=showBk.status===s;
+                    const label=s==="cancel"?"취소":"노쇼";
+                    const col=s==="cancel"?G5:RD;
+                    return (
+                      <button key={s} onClick={()=>{
+                        const ns=active?undefined:s;
+                        if(onUpdate) onUpdate(showBk,{status:ns});
+                        const idx=BKS.findIndex(x=>x.id===showBk.id);
+                        if(idx>=0) BKS[idx]={...BKS[idx],status:ns};
+                        setShowBk(p=>({...p,status:ns}));
+                      }} style={{flex:1,padding:"10px",borderRadius:12,border:"1.5px solid "+(active?col:G2),background:active?col+"15":WH,color:active?col:G5,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                        {active?"✓ "+label+" 해제":label+" 처리"}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{display:"flex",gap:9,marginTop:8}}>
+                  <button onClick={() => setDelConfirmBk(showBk)}
+                    style={{padding:"13px 12px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>삭제</button>
+                  <button onClick={() => { setEditBk({...showBk}); setShowBk(null); }}
+                    style={{flex:1,padding:"13px",borderRadius:14,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>수정</button>
+                  <button onClick={() => {if(onPay){onPay(showBk);setShowBk(null);}}}
+                    style={{flex:2,padding:"13px",borderRadius:14,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 14px "+P+"44"}}>결제 처리</button>
+                </div>
+              </>
             )}
             {paidBks[showBk.id] && (
               <div style={{display:"flex",gap:9,marginTop:12}}>
