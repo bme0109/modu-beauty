@@ -3778,7 +3778,7 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
         <div style={{background:WH,padding:"13px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
           <button onClick={goBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600}}>‹ 뒤로</button>
           <span style={{fontSize:15,fontWeight:800,color:DK}}>선불권 적립 설정</span>
-          <button onClick={goBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:700}}>저장</button>
+          <button onClick={goBack} style={{background:P,border:"none",cursor:"pointer",color:WH,fontSize:12,fontWeight:700,padding:"7px 16px",borderRadius:10}}>저장</button>
         </div>
         <div style={{background:WH}}>
           {methods.map(m => (
@@ -4011,7 +4011,7 @@ export default function App({ session, onLogout }) {
   const [chargeAmt, setChargeAmt] = useState("");
   const [payBonus, setPayBonus] = useState("");
   const [finalAmt, setFinalAmt] = useState("");
-  const [bonusRates, setBonusRates] = useState({naverpay:0,card:10,cash:20});
+  const [bonusRates, setBonusRates] = useState(() => { try { const s=localStorage.getItem("bonusRates"); return s?JSON.parse(s):{naverpay:0,card:10,cash:20}; } catch { return {naverpay:0,card:10,cash:20}; } });
   // 결제취소 확인 모달
   const [confirmCancel, setConfirmCancel] = useState(null);
   // 제품 추가
@@ -4219,8 +4219,8 @@ export default function App({ session, onLogout }) {
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
-        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
-        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>setBonusRates(r)} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking}/>}
+        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
+        {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking}/>}
       </div>
 
       {/* 하단 탭 */}
