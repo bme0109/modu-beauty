@@ -2066,7 +2066,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
         <div style={{background:WH,padding:"12px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
           <button onClick={() => setEditMode(false)} style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:13,fontWeight:600}}>취소</button>
           <span style={{fontSize:15,fontWeight:800,color:DK}}>고객 정보 수정</span>
-          <button onClick={saveEdit} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:700}}>저장</button>
+          <button onClick={saveEdit} style={{background:P,border:"none",cursor:"pointer",color:WH,fontSize:12,fontWeight:700,padding:"7px 16px",borderRadius:10}}>저장</button>
         </div>
         <div style={{padding:"14px 16px"}}>
           {[{l:"이름",k:"name",t:"text"},{l:"전화번호",k:"phone",t:"tel"},{l:"생년월일",k:"birth",t:"text"}].map(f => (
@@ -3628,7 +3628,7 @@ function ServiceMenuPage({ onBack, uid }) {
       <div style={{background:WH,padding:"13px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>‹ 뒤로</button>
         <span style={{fontSize:15,fontWeight:800,color:DK}}>시술메뉴 관리</span>
-        <button onClick={()=>saveMenu(cats)} style={{background:saved?"none":P,border:"none",color:saved?G5:WH,fontSize:13,fontWeight:700,cursor:"pointer",padding:"6px 12px",borderRadius:10}}>{saved?"저장완료":"저장하기"}</button>
+        <button onClick={()=>saveMenu(cats)} style={{background:saved?"none":P,border:"none",color:saved?G5:WH,fontSize:13,fontWeight:700,cursor:"pointer",padding:"7px 16px",borderRadius:10}}>{saved?"저장완료":"저장"}</button>
       </div>
       {cats.map(cat => (
         <div key={cat.id} style={{marginBottom:8}}>
@@ -3900,7 +3900,7 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
       <div style={{background:WH,padding:"13px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <button onClick={goBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:3}}>‹ 뒤로</button>
         <span style={{fontSize:15,fontWeight:800,color:DK}}>직원 관리</span>
-        <button onClick={() => {onUpdateStaff(sl);goBack();}} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:700}}>저장</button>
+        <button onClick={() => {onUpdateStaff(sl);goBack();}} style={{background:P,border:"none",cursor:"pointer",color:WH,fontSize:12,fontWeight:700,padding:"7px 16px",borderRadius:10}}>저장</button>
       </div>
       <div style={{background:WH}}>
         {sl.map(s => (
@@ -3944,7 +3944,7 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
       <div style={{background:WH,padding:"13px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <button onClick={goBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600}}>‹ 뒤로</button>
         <span style={{fontSize:15,fontWeight:800,color:DK}}>운영시간 설정</span>
-        <button onClick={goBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:700}}>저장</button>
+        <button onClick={goBack} style={{background:P,border:"none",cursor:"pointer",color:WH,fontSize:12,fontWeight:700,padding:"7px 16px",borderRadius:10}}>저장</button>
       </div>
       {[{l:"시작 시간",v:sh,set:setSh},{l:"종료 시간",v:eh,set:setEh}].map(r => (
         <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:"1px solid "+G2,background:WH}}>
