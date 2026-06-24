@@ -3963,7 +3963,7 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
         <div style={{display:"flex",gap:8}}>
           {[15,30].map(u => (
             <button key={u} onClick={() => onUpdateSlotUnit && onUpdateSlotUnit(u)}
-              style={{padding:"7px 16px",borderRadius:10,border:slotUnit===u?"none":"1px solid "+G2,background:slotUnit===u?P:WH,color:slotUnit===u?WH:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              style={{padding:"7px 16px",borderRadius:10,border:slotUnit===u?"1.5px solid "+PM:"1px solid "+G2,background:slotUnit===u?PL:WH,color:slotUnit===u?P:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>
               {u}분
             </button>
           ))}
