@@ -2389,7 +2389,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
             </button>
           </div>
           <button onClick={()=>{setShowNaverImport(v=>!v);setImportResult(null);}}
-            style={{padding:"3px 9px",borderRadius:8,background:showNaverImport?G2:WH,border:"1px solid "+G2,color:G7,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            style={{padding:"3px 9px",borderRadius:8,background:showNaverImport?G2:"#E8F9EE",border:"1px solid "+(showNaverImport?G2:"#03C75A"),color:showNaverImport?G7:"#009444",fontSize:11,fontWeight:700,cursor:"pointer"}}>
             N 고객 가져오기
           </button>
         </div>
