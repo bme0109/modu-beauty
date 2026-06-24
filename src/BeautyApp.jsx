@@ -2729,6 +2729,28 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
       </div>
 
       <div style={{padding:"12px 13px 0"}}>
+        {(()=>{
+          const expiring=PREPAID_DATA.filter(d=>{const dl=daysLeft(d.expiry);return dl!==null&&dl<=30;}).sort((a,b)=>daysLeft(a.expiry)-daysLeft(b.expiry));
+          if(!expiring.length) return null;
+          return (
+            <div style={{background:"#FFF8E7",borderRadius:14,padding:"12px 14px",marginBottom:12,border:"1px solid #FFD93D"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#B8860B",marginBottom:6,display:"flex",alignItems:"center",gap:5}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B8860B" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                선불권 만료 임박 {expiring.length}명
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {expiring.map(d=>{
+                  const dl=daysLeft(d.expiry);
+                  return (
+                    <span key={d.custId} style={{fontSize:11,fontWeight:700,color:dl<=7?RD:"#B8860B",background:dl<=7?"#FFE0E0":"#FFF3CD",borderRadius:6,padding:"3px 9px"}}>
+                      {d.custName} {dl<=0?"만료":dl<=7?"D-"+dl+" ⚠":"D-"+dl}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         <div style={{background:WH,borderRadius:18,padding:"15px",marginBottom:12,border:"1px solid "+G2}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
             <span style={{fontSize:15,fontWeight:800,color:DK}}>{_tyr}년 {_tmo}월</span>
@@ -3125,6 +3147,10 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   );
 }
 let PREPAID_DATA = [];
+function daysLeft(expiry) {
+  if(!expiry) return null;
+  return Math.ceil((new Date(expiry) - new Date(TODAY)) / (1000*60*60*24));
+}
 function buildPrepaidFromPaidBks(paidBks) {
   const map = {};
   const entries = Object.entries(paidBks).sort((a,b)=>(a[1].date||'').localeCompare(b[1].date||''));
@@ -3170,6 +3196,8 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
   const [showCustSearch, setShowCustSearch] = useState(false);
   const [custSearchQ, setCustSearchQ] = useState("");
   const [showBonusSetting, setShowBonusSetting] = useState(false);
+  const [expiry, setExpiry] = useState("");
+  const [newExpiry, setNewExpiry] = useState("");
 
   const filteredData = data.filter(d => d.custName.includes(searchQ));
   const filteredCusts = CUSTS.filter(c =>
@@ -3182,11 +3210,12 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
     const bonus=Number(bonusInput)||0;
     const total=amt+bonus;
     const updated={...sel,balance:sel.balance+total,total:sel.total+total,
+      ...(expiry?{expiry}:{}),
       history:[...sel.history,{id:Date.now(),type:"charge",amount:total,date:TODAY,
         memo:(memo||"충전")+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
     const nd=data.map(d=>d.custId===sel.custId?updated:d);
     onPrepaidUpdate(nd); setSel(updated);
-    setAmount(""); setMemo(""); setChargeMethod(""); setBonusInput(""); setShowCharge(false);
+    setAmount(""); setMemo(""); setChargeMethod(""); setBonusInput(""); setExpiry(""); setShowCharge(false);
   }
   function use() {
     if(!amount||Number(amount)>sel.balance) return;
@@ -3221,11 +3250,12 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
     const bonus = Number(newBonus)||0;
     const total = amt + bonus;
     const n={custId:Date.now(),custName:newCust.trim(),balance:total,total:total,
+      ...(newExpiry?{expiry:newExpiry}:{}),
       history:[{id:1,type:"charge",amount:total,date:TODAY,
         memo:"신규 발급"+(bonus>0?" (충전 "+amt.toLocaleString()+"원 + 보너스 "+bonus.toLocaleString()+"원)":"")}]};
     const nd=[...data,n];
     onPrepaidUpdate(nd);
-    setNewCust(""); setNewAmt(""); setNewMethod(""); setNewBonus(""); setShowNew(false);
+    setNewCust(""); setNewAmt(""); setNewMethod(""); setNewBonus(""); setNewExpiry(""); setShowNew(false);
   }
 
   if(sel) return (
@@ -3239,7 +3269,15 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
         <div style={{background:P,borderRadius:20,padding:"22px 20px",marginBottom:14,boxShadow:"0 6px 20px "+P+"40"}}>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginBottom:6}}>{sel.custName}님 선불권 잔액</div>
           <div style={{fontSize:30,fontWeight:800,color:WH,marginBottom:8}}>{sel.balance.toLocaleString()}원</div>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.6)"}}>총 충전액 {sel.total.toLocaleString()}원</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.6)"}}>총 충전액 {sel.total.toLocaleString()}원</div>
+            {sel.expiry && (()=>{
+              const dl=daysLeft(sel.expiry);
+              const label=dl<=0?"만료":dl<=7?"D-"+dl+" ⚠":"D-"+dl;
+              const clr=dl<=0?"#FF6B6B":dl<=7?"#FFD93D":"rgba(255,255,255,0.8)";
+              return <div style={{fontSize:11,fontWeight:700,color:clr}}>{sel.expiry} ({label})</div>;
+            })()}
+          </div>
         </div>
         <div style={{display:"flex",gap:10,marginBottom:16}}>
           <button onClick={() => setShowCharge(true)} style={{flex:1,padding:"13px",borderRadius:14,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>+ 충전</button>
@@ -3267,6 +3305,11 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
         <Sheet onClose={() => {setShowCharge(false);setAmount("");setMemo("");setChargeMethod("");setBonusInput("");}} maxH="85vh">
           <SheetHandle title="선불권 충전" onClose={() => {setShowCharge(false);setAmount("");setMemo("");setChargeMethod("");setBonusInput("");}}/>
           <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:G5,fontWeight:600,marginBottom:6}}>유효기간 <span style={{fontWeight:400,color:G5}}>(선택)</span></div>
+              <input type="date" value={expiry} onChange={e=>setExpiry(e.target.value)}
+                style={{width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid "+(expiry?P:G2),fontSize:13,outline:"none",color:expiry?DK:G5,background:WH,boxSizing:"border-box"}}/>
+            </div>
             <PrepaidChargeForm
               amount={amount} setAmount={setAmount}
               chargeMethod={chargeMethod} setChargeMethod={setChargeMethod}
@@ -3370,6 +3413,28 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
             </div>
           );
         })()}
+        {/* 만료 임박 */}
+        {(()=>{
+          const expiring=data.filter(d=>{const dl=daysLeft(d.expiry);return dl!==null&&dl<=30;}).sort((a,b)=>daysLeft(a.expiry)-daysLeft(b.expiry));
+          if(!expiring.length) return null;
+          return (
+            <div style={{marginBottom:14,background:"#FFF8E7",borderRadius:14,padding:"12px 14px",border:"1px solid #FFD93D"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#B8860B",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B8860B" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                만료 임박 {expiring.length}명
+              </div>
+              {expiring.map(d=>{
+                const dl=daysLeft(d.expiry);
+                return (
+                  <div key={d.custId} onClick={()=>setSel(d)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderTop:"1px solid #FFE88A",cursor:"pointer"}}>
+                    <div style={{fontSize:13,fontWeight:600,color:DK}}>{d.custName} <span style={{fontSize:11,color:G5,fontWeight:400}}>잔액 {d.balance.toLocaleString()}원</span></div>
+                    <span style={{fontSize:11,fontWeight:700,color:dl<=7?RD:"#B8860B",background:dl<=7?"#FFE0E0":"#FFF3CD",borderRadius:6,padding:"2px 8px"}}>{dl<=0?"만료":dl<=7?"D-"+dl+" ⚠":"D-"+dl}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
         {/* 검색창 */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
           <div style={{flex:1,display:"flex",alignItems:"center",background:WH,borderRadius:11,border:"1px solid "+G2,padding:"9px 12px",gap:8}}>
@@ -3393,7 +3458,16 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
             <div onClick={() => setSel(d)} style={{display:"flex",alignItems:"center",gap:12,flex:1,cursor:"pointer"}}>
             <div style={{width:44,height:44,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:P,flexShrink:0}}>{d.custName[0]}</div>
             <div style={{flex:1}}>
-              <div style={{fontSize:14,fontWeight:700,color:DK,marginBottom:4}}>{d.custName}</div>
+              <div style={{fontSize:14,fontWeight:700,color:DK,marginBottom:4,display:"flex",alignItems:"center",gap:6}}>
+                {d.custName}
+                {d.expiry&&(()=>{
+                  const dl=daysLeft(d.expiry);
+                  if(dl===null) return null;
+                  const bg=dl<=0?"#FFE0E0":dl<=7?"#FFF3CD":"#F0F7FF";
+                  const cl=dl<=0?RD:dl<=7?"#B8860B":"#4A90D9";
+                  return <span style={{fontSize:10,fontWeight:700,color:cl,background:bg,borderRadius:5,padding:"2px 6px"}}>{dl<=0?"만료":"D-"+dl}</span>;
+                })()}
+              </div>
               <div style={{height:4,background:G2,borderRadius:2,marginBottom:4}}>
                 <div style={{width:d.total>0?Math.min(d.balance/d.total*100,100).toFixed(0)+"%":"0%",height:"100%",background:P,borderRadius:2}}/>
               </div>
@@ -3422,6 +3496,12 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
               <div style={{fontSize:11,color:G5,fontWeight:600,marginBottom:6}}>고객명</div>
               <input value={newCust} onChange={e => setNewCust(e.target.value)} placeholder="고객 이름"
                 style={{width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid "+(newCust?P:G2),fontSize:14,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+            </div>
+            {/* 유효기간 */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:G5,fontWeight:600,marginBottom:6}}>유효기간 <span style={{fontWeight:400,color:G5}}>(선택)</span></div>
+              <input type="date" value={newExpiry} onChange={e=>setNewExpiry(e.target.value)}
+                style={{width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid "+(newExpiry?P:G2),fontSize:13,outline:"none",color:newExpiry?DK:G5,background:WH,boxSizing:"border-box"}}/>
             </div>
             {/* 공통 충전 폼 */}
             <PrepaidChargeForm
