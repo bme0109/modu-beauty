@@ -678,6 +678,7 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
   const [imgLoading, setImgLoading] = useState(false);
   const [imgError, setImgError] = useState(null);
   const imgRef = useRef(null);
+  const [dupCust, setDupCust] = useState(null);
 
   function set(k, v) { setF(p => ({...p, [k]: v})); }
   function togTag(t) { setF(p => ({...p, tags: p.tags.includes(t) ? p.tags.filter(x=>x!==t) : [...p.tags,t]})); }
@@ -769,14 +770,23 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
       upd.dep='naver_paid';
     }
     if(upd.name || upd.phone){
-      const ex = CUSTS.find(c=>c.phone && upd.phone && c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
-      if(ex){
-        upd.cid = String(ex.id);
-      } else if(upd.name){
-        const newC = {id:Date.now(), name:upd.name, phone:upd.phone||"", birth:"", memo:"", tags:[], visits:0, revenue:0};
-        CUSTS = [...CUSTS, newC];
-        if(onSaveNewCust) onSaveNewCust(newC);
-        upd.cid = String(newC.id);
+      const exPhone = CUSTS.find(c=>c.phone && upd.phone && c.phone.replace(/-/g,"")===upd.phone.replace(/-/g,""));
+      if(exPhone){
+        upd.cid = String(exPhone.id);
+      } else {
+        const exName = upd.name && CUSTS.find(c=>c.name===upd.name);
+        if(exName){
+          setF(p=>({...p,...upd}));
+          setNaverText("");
+          setShowNaverPaste(false);
+          setDupCust(exName);
+          return;
+        } else if(upd.name){
+          const newC = {id:Date.now(), name:upd.name, phone:upd.phone||"", birth:"", memo:"", tags:[], visits:0, revenue:0};
+          CUSTS = [...CUSTS, newC];
+          if(onSaveNewCust) onSaveNewCust(newC);
+          upd.cid = String(newC.id);
+        }
       }
     }
     setF(p=>({...p,...upd}));
@@ -1064,6 +1074,33 @@ function BookModal({ initTime, initSid, initDate, onClose, staff, onAddStaff, sl
       </Sheet>
       {showS && <SvcModal onSelect={s => {set("svc",s.name);set("mins",String(s.mins));set("svcPrice",String(s.price));setShowS(false);}} onClose={() => setShowS(false)}/>}
       {showC && <CustModal onSelect={c => {set("cid",String(c.id));set("name",c.name);set("phone",c.phone||"");setShowC(false);}} onClose={() => setShowC(false)} onSaveNew={onSaveNewCust}/>}
+      {dupCust && (
+        <div style={{position:"fixed",inset:0,background:"#0007",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:WH,borderRadius:16,padding:"24px 20px",width:300,boxShadow:"0 8px 32px #0003"}}>
+            <div style={{fontSize:14,fontWeight:700,color:DK,marginBottom:14,textAlign:"center"}}>이미 등록된 고객이 있습니다</div>
+            <div style={{background:G3,borderRadius:10,padding:"12px 14px",marginBottom:18}}>
+              <div style={{fontSize:15,fontWeight:700,color:DK}}>{dupCust.name}</div>
+              {dupCust.phone && <div style={{fontSize:12,color:G5,marginTop:3}}>{dupCust.phone}</div>}
+              <div style={{fontSize:12,color:G5,marginTop:3}}>방문 {BKS.filter(b=>b.name===dupCust.name).length}회</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{set("cid",String(dupCust.id));setDupCust(null);}}
+                style={{flex:1,padding:"11px 0",borderRadius:10,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                같은 고객
+              </button>
+              <button onClick={()=>{
+                const newC={id:Date.now(),name:f.name,phone:f.phone||"",birth:"",memo:"",tags:[],visits:0,revenue:0};
+                CUSTS=[...CUSTS,newC];
+                if(onSaveNewCust) onSaveNewCust(newC);
+                set("cid",String(newC.id));
+                setDupCust(null);
+              }} style={{flex:1,padding:"11px 0",borderRadius:10,background:WH,border:"1.5px solid "+G2,color:G7,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                신규 등록
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
