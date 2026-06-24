@@ -4050,7 +4050,6 @@ const DEFAULT_SMS_TEMPLATES = [
 ];
 
 function SmsSendPage({ shopName, uid }) {
-  const {P,PL,PM,PS,OB,BG,WH,G2,G3,G5,G7,DK,RD}=t;
   const SKEY = `smsTemplates_${uid||"local"}`;
   const [templates, setTemplates] = useState(() => {
     try { const s=localStorage.getItem(SKEY); return s?JSON.parse(s):DEFAULT_SMS_TEMPLATES; } catch { return DEFAULT_SMS_TEMPLATES; }
