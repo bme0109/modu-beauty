@@ -3351,7 +3351,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
     <div style={{minHeight:"100vh",background:BG,paddingBottom:40}}>
       <div style={{background:WH,padding:"13px 18px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>‹ 뒤로</button>
-        <span style={{fontSize:15,fontWeight:800,color:DK}}>선불권 관리</span>
+        <span style={{fontSize:15,fontWeight:800,color:DK}}>회원권 관리</span>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <button onClick={() => setShowBonusSetting(true)} title="적립 설정"
             style={{background:"none",border:"none",cursor:"pointer",padding:"4px",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -4765,7 +4765,7 @@ export default function App({ session, onLogout, onChangePassword }) {
   ];
   const menus = [
     {l:"고객관리",a:()=>{setTab("customer");setMenu(false);}},
-    {l:"선불권관리",a:()=>{setTab("prepaid");setMenu(false);}},
+    {l:"회원권관리",a:()=>{setTab("prepaid");setMenu(false);}},
     {l:"매출분석",a:()=>{setTab("sales");setMenu(false);}},
     {l:"문자발송",a:()=>{setTab("sms");setMenu(false);}},
   ];
