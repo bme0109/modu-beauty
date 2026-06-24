@@ -3178,6 +3178,7 @@ function buildPrepaidFromPaidBks(paidBks) {
 
 function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaidUpdate }) {
   const data = prepaidData || [];
+  const [activeTab, setActiveTab] = useState("prepaid");
   const [sel, setSel] = useState(null);
   const [smsEdit, setSmsEdit] = useState(null);
   const [showCharge, setShowCharge] = useState(false);
@@ -3360,6 +3361,24 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
         </div>
 
       </div>
+
+      {/* 탭 */}
+      <div style={{display:"flex",background:WH,borderBottom:"1px solid "+G2,position:"sticky",top:50,zIndex:49}}>
+        {[{k:"prepaid",l:"선불권"},{k:"session",l:"횟수권"}].map(({k,l})=>(
+          <button key={k} onClick={()=>{setActiveTab(k);setSel(null);}}
+            style={{flex:1,padding:"12px 0",background:"none",border:"none",borderBottom:activeTab===k?"2.5px solid "+P:"2.5px solid transparent",color:activeTab===k?P:G5,fontSize:13,fontWeight:activeTab===k?800:500,cursor:"pointer"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {activeTab==="session" ? (
+        <div style={{padding:"40px 20px",textAlign:"center",color:G5}}>
+          <div style={{fontSize:40,marginBottom:16}}>🎟</div>
+          <div style={{fontSize:15,fontWeight:700,color:DK,marginBottom:8}}>횟수권 관리</div>
+          <div style={{fontSize:13,lineHeight:1.8}}>횟수권 기능은 준비 중입니다.</div>
+        </div>
+      ) : (
       <div style={{padding:"14px 16px 8px"}}>
         {/* 요약 카드 */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
@@ -3485,6 +3504,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
           );
         })}
       </div>
+      )} {/* end activeTab===prepaid */}
 
       {/* 신규 발급 */}
       {showNew && (
