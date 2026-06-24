@@ -4027,6 +4027,262 @@ function SettingsPage({ staff, onUpdateStaff, initialSub, onClearSub, bonusRates
   );
 }
 
+// ── 문자 발송 페이지 ──────────────────────────────────
+const DEFAULT_SMS_TEMPLATES = [
+  {id:"deposit",   category:"예약", label:"예약대기 · 예약금 안내",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n{날짜} {시간} 예약이 접수되었습니다.\n예약 확정을 위해 예약금을 입금해 주세요.\n[계좌번호 입력]\n입금 확인 후 예약 확정 안내 드리겠습니다. 감사합니다."},
+  {id:"confirm",   category:"예약", label:"예약 확정",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n{날짜} {시간} {시술명} 예약이 확정되었습니다.\n당일 방문 시 편하게 연락 주세요. 감사합니다 :)"},
+  {id:"remind",    category:"예약", label:"예약 리마인드",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n내일 {시간} {시술명} 예약 리마인드 문자 드립니다.\n취소·변경이 필요하신 경우 미리 연락 주시면 감사하겠습니다."},
+  {id:"cancel",    category:"예약", label:"예약 취소",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n요청하신 {날짜} {시간} 예약이 취소 처리되었습니다.\n다음에 또 방문해 주세요. 감사합니다."},
+  {id:"noshow",    category:"예약", label:"노쇼 안내",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n오늘 {시간} 예약에 별도 연락 없이 방문하지 않으셔서 노쇼 처리되었습니다.\n노쇼 발생 시 향후 예약이 제한될 수 있으니 양해 부탁드립니다."},
+  {id:"prepaid_charge",  category:"회원권", label:"선불권 충전 완료",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n선불권 {금액} 충전이 완료되었습니다.\n현재 잔액: {잔액}\n감사합니다."},
+  {id:"prepaid_balance", category:"회원권", label:"선불권 잔액 안내",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n현재 선불권 잔액은 {잔액}입니다.\n다음 방문 시 편리하게 이용해 주세요. 감사합니다."},
+  {id:"prepaid_low",     category:"회원권", label:"선불권 잔액 부족",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n선불권 잔액이 {잔액}으로 부족합니다.\n다음 방문 전 충전하시면 더 편리하게 이용하실 수 있습니다. 감사합니다."},
+  {id:"membership_expire", category:"회원권", label:"회원권 만료 안내",
+   body:"안녕하세요 {이름}님, {샵이름}입니다.\n회원권 유효기간이 얼마 남지 않았습니다.\n기간 내 사용하지 않으시면 잔액이 소멸될 수 있으니 방문 예약 부탁드립니다. 감사합니다."},
+];
+
+function SmsSendPage({ shopName, uid }) {
+  const {P,PL,PM,PS,OB,BG,WH,G2,G3,G5,G7,DK,RD}=t;
+  const SKEY = `smsTemplates_${uid||"local"}`;
+  const [templates, setTemplates] = useState(() => {
+    try { const s=localStorage.getItem(SKEY); return s?JSON.parse(s):DEFAULT_SMS_TEMPLATES; } catch { return DEFAULT_SMS_TEMPLATES; }
+  });
+  const [activeCategory, setActiveCategory] = useState("예약");
+  const [editId, setEditId] = useState(null);
+  const [editBody, setEditBody] = useState("");
+  const [sendTmpl, setSendTmpl] = useState(null);
+  const [custQ, setCustQ] = useState("");
+  const [selCust, setSelCust] = useState(null);
+  const [vars, setVars] = useState({date:TODAY,time:"",svc:"",amount:"",balance:""});
+  const [finalBody, setFinalBody] = useState("");
+
+  const categories = [...new Set(DEFAULT_SMS_TEMPLATES.map(t=>t.category))];
+
+  function saveTemplate(id, body) {
+    const next = templates.map(t=>t.id===id?{...t,body}:t);
+    setTemplates(next);
+    localStorage.setItem(SKEY, JSON.stringify(next));
+    setEditId(null);
+  }
+  function resetTemplate(id) {
+    const def = DEFAULT_SMS_TEMPLATES.find(t=>t.id===id);
+    if (!def) return;
+    saveTemplate(id, def.body);
+  }
+  function fillVars(body) {
+    return body
+      .replace(/\{이름\}/g, selCust?.name||"")
+      .replace(/\{샵이름\}/g, shopName||"")
+      .replace(/\{날짜\}/g, vars.date||"")
+      .replace(/\{시간\}/g, vars.time||"")
+      .replace(/\{시술명\}/g, vars.svc||"")
+      .replace(/\{금액\}/g, vars.amount?Number(vars.amount).toLocaleString()+"원":"")
+      .replace(/\{잔액\}/g, vars.balance?Number(vars.balance).toLocaleString()+"원":"");
+  }
+  function openSend(tmpl) {
+    setSendTmpl(tmpl);
+    setSelCust(null); setCustQ("");
+    setVars({date:TODAY,time:"",svc:"",amount:"",balance:""});
+    setFinalBody(tmpl.body.replace(/\{샵이름\}/g, shopName||""));
+  }
+  function closeSend() { setSendTmpl(null); setSelCust(null); setCustQ(""); }
+
+  // 고객 선택 시 이름·최근예약 자동 채우기
+  function pickCust(c) {
+    setSelCust(c);
+    setCustQ(c.name);
+    const lastBk = BKS.filter(b=>b.name===c.name).sort((a,b)=>b.date.localeCompare(a.date))[0];
+    const nextVars = {...vars};
+    if(lastBk) { nextVars.date=lastBk.date||vars.date; nextVars.time=lastBk.time||""; nextVars.svc=lastBk.svc||""; }
+    setVars(nextVars);
+    if(sendTmpl) setFinalBody(fillVarsWith(sendTmpl.body, c, nextVars));
+  }
+  function fillVarsWith(body, cust, v) {
+    return body
+      .replace(/\{이름\}/g, cust?.name||"")
+      .replace(/\{샵이름\}/g, shopName||"")
+      .replace(/\{날짜\}/g, v.date||"")
+      .replace(/\{시간\}/g, v.time||"")
+      .replace(/\{시술명\}/g, v.svc||"")
+      .replace(/\{금액\}/g, v.amount?Number(v.amount).toLocaleString()+"원":"")
+      .replace(/\{잔액\}/g, v.balance?Number(v.balance).toLocaleString()+"원":"");
+  }
+  function updateVars(k, val) {
+    const next = {...vars,[k]:val};
+    setVars(next);
+    if(sendTmpl) setFinalBody(fillVarsWith(sendTmpl.body, selCust, next));
+  }
+
+  const custSuggestions = custQ && !selCust
+    ? CUSTS.filter(c=>c.name.includes(custQ)||c.phone.replace(/-/g,"").includes(custQ.replace(/-/g,""))).slice(0,5)
+    : [];
+
+  const neededVars = sendTmpl ? {
+    date:    sendTmpl.body.includes("{날짜}"),
+    time:    sendTmpl.body.includes("{시간}"),
+    svc:     sendTmpl.body.includes("{시술명}"),
+    amount:  sendTmpl.body.includes("{금액}"),
+    balance: sendTmpl.body.includes("{잔액}"),
+  } : {};
+
+  return (
+    <div style={{paddingBottom:80}}>
+      <div style={{padding:"16px 18px 12px",background:WH,borderBottom:"1px solid "+G2,position:"sticky",top:0,zIndex:10}}>
+        <span style={{fontSize:16,fontWeight:800,color:DK}}>문자 발송</span>
+        <div style={{fontSize:11,color:G5,marginTop:3}}>템플릿을 편집하고 고객에게 바로 발송하세요</div>
+      </div>
+
+      <div style={{display:"flex",gap:7,padding:"12px 18px 0",overflowX:"auto"}}>
+        {categories.map(cat=>(
+          <button key={cat} onClick={()=>setActiveCategory(cat)}
+            style={{padding:"6px 16px",borderRadius:20,border:"none",background:activeCategory===cat?P:G2,color:activeCategory===cat?WH:G7,fontSize:12,fontWeight:activeCategory===cat?700:500,cursor:"pointer",flexShrink:0}}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <div style={{padding:"12px 18px"}}>
+        {templates.filter(tp=>tp.category===activeCategory).map(tp=>(
+          <div key={tp.id} style={{background:WH,borderRadius:14,padding:"14px 16px",marginBottom:10,border:"1px solid "+G2,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:DK}}>{tp.label}</span>
+              {editId!==tp.id && (
+                <button onClick={()=>{setEditId(tp.id);setEditBody(tp.body);}}
+                  style={{padding:"4px 10px",borderRadius:8,background:OB,border:"none",color:P,fontSize:11,fontWeight:600,cursor:"pointer"}}>편집</button>
+              )}
+            </div>
+
+            {editId===tp.id ? (
+              <div>
+                <textarea value={editBody} onChange={e=>setEditBody(e.target.value)} rows={6}
+                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+P,fontSize:12,color:DK,background:WH,outline:"none",resize:"vertical",boxSizing:"border-box",fontFamily:"inherit",lineHeight:1.8}}/>
+                <div style={{fontSize:10,color:G5,marginBottom:8,marginTop:4}}>
+                  사용 가능한 변수: {["{이름}","{날짜}","{시간}","{시술명}","{샵이름}","{금액}","{잔액}"].join("  ")}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>resetTemplate(tp.id)}
+                    style={{flex:1,padding:"9px",borderRadius:10,background:G2,border:"none",color:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>초기화</button>
+                  <button onClick={()=>setEditId(null)}
+                    style={{flex:1,padding:"9px",borderRadius:10,background:G2,border:"none",color:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>취소</button>
+                  <button onClick={()=>saveTemplate(tp.id,editBody)}
+                    style={{flex:2,padding:"9px",borderRadius:10,background:P,border:"none",color:WH,fontSize:12,fontWeight:700,cursor:"pointer"}}>저장</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{fontSize:12,color:G7,lineHeight:1.8,marginBottom:10,whiteSpace:"pre-wrap",background:PS,borderRadius:9,padding:"10px 12px"}}>{tp.body}</div>
+                <button onClick={()=>openSend(tp)}
+                  style={{width:"100%",padding:"10px",borderRadius:10,background:PL,border:"1px solid "+PM,color:P,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  문자 보내기
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* 문자 보내기 시트 */}
+      {sendTmpl && (
+        <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+          onClick={e=>{if(e.target===e.currentTarget)closeSend();}}>
+          <div style={{width:"100%",maxWidth:430,background:WH,borderRadius:"22px 22px 0 0",padding:"20px 18px 44px",maxHeight:"88vh",overflowY:"auto"}}>
+            <div style={{width:34,height:4,background:G3,borderRadius:2,margin:"0 auto 16px"}}/>
+            <div style={{fontSize:14,fontWeight:800,color:DK,marginBottom:14}}>{sendTmpl.label}</div>
+
+            {/* 고객 검색 */}
+            <div style={{marginBottom:12,position:"relative"}}>
+              <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>고객</div>
+              <input value={custQ} onChange={e=>{setCustQ(e.target.value);if(selCust)setSelCust(null);}}
+                placeholder="이름 또는 전화번호"
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+(selCust?P:G2),fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              {custSuggestions.length>0 && (
+                <div style={{position:"absolute",top:"100%",left:0,right:0,background:WH,borderRadius:10,boxShadow:"0 4px 16px rgba(0,0,0,0.12)",border:"1px solid "+G2,zIndex:10,overflow:"hidden"}}>
+                  {custSuggestions.map(c=>(
+                    <div key={c.id} onClick={()=>pickCust(c)}
+                      style={{padding:"10px 14px",borderBottom:"1px solid "+G2,cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:P,flexShrink:0}}>{c.name[0]}</div>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:DK}}>{c.name}</div>
+                        <div style={{fontSize:11,color:G5}}>{c.phone}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 변수 입력 */}
+            {Object.values(neededVars).some(Boolean) && (
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                {neededVars.date && (
+                  <div>
+                    <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>날짜</div>
+                    <input value={vars.date} onChange={e=>updateVars("date",e.target.value)} type="date"
+                      style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                  </div>
+                )}
+                {neededVars.time && (
+                  <div>
+                    <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>시간</div>
+                    <input value={vars.time} onChange={e=>updateVars("time",e.target.value)} placeholder="10:00"
+                      style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                  </div>
+                )}
+                {neededVars.svc && (
+                  <div style={{gridColumn:"1/-1"}}>
+                    <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>시술명</div>
+                    <input value={vars.svc} onChange={e=>updateVars("svc",e.target.value)} placeholder="젤네일 아트"
+                      style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                  </div>
+                )}
+                {neededVars.amount && (
+                  <div>
+                    <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>금액</div>
+                    <input value={vars.amount} onChange={e=>updateVars("amount",e.target.value)} type="number" placeholder="50000"
+                      style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                  </div>
+                )}
+                {neededVars.balance && (
+                  <div>
+                    <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>잔액</div>
+                    <input value={vars.balance} onChange={e=>updateVars("balance",e.target.value)} type="number" placeholder="30000"
+                      style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 미리보기 (직접 편집 가능) */}
+            <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>문자 내용 (직접 수정 가능)</div>
+            <textarea value={finalBody} onChange={e=>setFinalBody(e.target.value)} rows={6}
+              style={{width:"100%",padding:"12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,color:DK,background:PS,outline:"none",resize:"vertical",boxSizing:"border-box",fontFamily:"inherit",lineHeight:1.8,marginBottom:12}}/>
+
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={closeSend}
+                style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:13,fontWeight:600,cursor:"pointer"}}>취소</button>
+              <a href={`sms:${selCust?.phone||""}&body=${encodeURIComponent(finalBody)}`}
+                onClick={()=>setTimeout(closeSend,300)}
+                style={{flex:2,padding:"13px",borderRadius:13,background:selCust?.phone?P:G3,color:WH,fontSize:13,fontWeight:700,textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,pointerEvents:selCust?.phone?"auto":"none"}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={WH} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                {selCust?.phone ? "문자 보내기" : "고객을 먼저 선택하세요"}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── 앱 루트 ───────────────────────────────────────────
 export default function App({ session, onLogout, onChangePassword }) {
   const uid = session?.uid;
@@ -4318,7 +4574,7 @@ export default function App({ session, onLogout, onChangePassword }) {
     {l:"고객관리",a:()=>{setTab("customer");setMenu(false);}},
     {l:"선불권관리",a:()=>{setTab("prepaid");setMenu(false);}},
     {l:"매출분석",a:()=>{setTab("sales");setMenu(false);}},
-    {l:"문자발송",a:null},
+    {l:"문자발송",a:()=>{setTab("sms");setMenu(false);}},
   ];
 
   if(dbLoading) return (
@@ -4361,6 +4617,7 @@ export default function App({ session, onLogout, onChangePassword }) {
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
+        {tab==="sms" && <SmsSendPage shopName={shopName} uid={uid}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking} naverUrl={naverUrl} onUpdateNaverUrl={u=>{setNaverUrl(u);localStorage.setItem("naverUrl",u);}}/>}
       </div>
 
