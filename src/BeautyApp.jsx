@@ -4099,8 +4099,10 @@ function SmsSendPage({ shopName, uid }) {
   const [selCust, setSelCust] = useState(null);
   const [vars, setVars] = useState({date:TODAY,time:"",svc:"",amount:"",balance:""});
   const [finalBody, setFinalBody] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTmpl, setNewTmpl] = useState({category:"예약",label:"",body:""});
 
-  const categories = [...new Set(DEFAULT_SMS_TEMPLATES.map(t=>t.category))];
+  const categories = [...new Set(templates.map(t=>t.category))];
 
   function saveTemplate(id, body) {
     const next = templates.map(t=>t.id===id?{...t,body}:t);
@@ -4130,6 +4132,23 @@ function SmsSendPage({ shopName, uid }) {
     setFinalBody(tmpl.body.replace(/\{샵이름\}/g, shopName||""));
   }
   function closeSend() { setSendTmpl(null); setSelCust(null); setCustQ(""); }
+  function addTemplate() {
+    const cat = newTmpl.category.trim() || "기타";
+    if(!newTmpl.label.trim() || !newTmpl.body.trim()) return;
+    const tmpl = {id:"custom_"+Date.now(), category:cat, label:newTmpl.label.trim(), body:newTmpl.body.trim()};
+    const next = [...templates, tmpl];
+    setTemplates(next);
+    localStorage.setItem(SKEY, JSON.stringify(next));
+    setShowAdd(false);
+    setNewTmpl({category:"예약",label:"",body:""});
+    setActiveCategory(cat);
+  }
+  function deleteTemplate(id) {
+    if(!window.confirm("삭제하시겠습니까?")) return;
+    const next = templates.filter(t=>t.id!==id);
+    setTemplates(next);
+    localStorage.setItem(SKEY, JSON.stringify(next));
+  }
 
   // 고객 선택 시 이름·최근예약 자동 채우기
   function pickCust(c) {
@@ -4171,9 +4190,13 @@ function SmsSendPage({ shopName, uid }) {
 
   return (
     <div style={{paddingBottom:80}}>
-      <div style={{padding:"16px 18px 12px",background:WH,borderBottom:"1px solid "+G2,position:"sticky",top:0,zIndex:10}}>
-        <span style={{fontSize:16,fontWeight:800,color:DK}}>문자 발송</span>
-        <div style={{fontSize:11,color:G5,marginTop:3}}>템플릿을 편집하고 고객에게 바로 발송하세요</div>
+      <div style={{padding:"16px 18px 12px",background:WH,borderBottom:"1px solid "+G2,position:"sticky",top:0,zIndex:10,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <div>
+          <span style={{fontSize:16,fontWeight:800,color:DK}}>문자 발송</span>
+          <div style={{fontSize:11,color:G5,marginTop:3}}>템플릿을 편집하고 고객에게 바로 발송하세요</div>
+        </div>
+        <button onClick={()=>setShowAdd(true)}
+          style={{padding:"7px 13px",borderRadius:9,background:P,border:"none",color:WH,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>+ 추가</button>
       </div>
 
       <div style={{display:"flex",gap:7,padding:"12px 18px 0",overflowX:"auto"}}>
@@ -4191,8 +4214,14 @@ function SmsSendPage({ shopName, uid }) {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <span style={{fontSize:13,fontWeight:700,color:DK}}>{tp.label}</span>
               {editId!==tp.id && (
-                <button onClick={()=>{setEditId(tp.id);setEditBody(tp.body);}}
-                  style={{padding:"4px 10px",borderRadius:8,background:OB,border:"none",color:P,fontSize:11,fontWeight:600,cursor:"pointer"}}>편집</button>
+                <div style={{display:"flex",gap:5}}>
+                  {!DEFAULT_SMS_TEMPLATES.some(d=>d.id===tp.id) && (
+                    <button onClick={()=>deleteTemplate(tp.id)}
+                      style={{padding:"4px 10px",borderRadius:8,background:"#FFF0F0",border:"none",color:RD,fontSize:11,fontWeight:600,cursor:"pointer"}}>삭제</button>
+                  )}
+                  <button onClick={()=>{setEditId(tp.id);setEditBody(tp.body);}}
+                    style={{padding:"4px 10px",borderRadius:8,background:OB,border:"none",color:P,fontSize:11,fontWeight:600,cursor:"pointer"}}>편집</button>
+                </div>
               )}
             </div>
 
@@ -4204,8 +4233,10 @@ function SmsSendPage({ shopName, uid }) {
                   사용 가능한 변수: {["{이름}","{날짜}","{시간}","{시술명}","{샵이름}","{금액}","{잔액}"].join("  ")}
                 </div>
                 <div style={{display:"flex",gap:6}}>
-                  <button onClick={()=>resetTemplate(tp.id)}
-                    style={{flex:1,padding:"9px",borderRadius:10,background:G2,border:"none",color:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>초기화</button>
+                  {DEFAULT_SMS_TEMPLATES.some(d=>d.id===tp.id) && (
+                    <button onClick={()=>resetTemplate(tp.id)}
+                      style={{flex:1,padding:"9px",borderRadius:10,background:G2,border:"none",color:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>초기화</button>
+                  )}
                   <button onClick={()=>setEditId(null)}
                     style={{flex:1,padding:"9px",borderRadius:10,background:G2,border:"none",color:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>취소</button>
                   <button onClick={()=>saveTemplate(tp.id,editBody)}
@@ -4311,6 +4342,52 @@ function SmsSendPage({ shopName, uid }) {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={WH} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 {selCust?.phone ? "문자 보내기" : "고객을 먼저 선택하세요"}
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 템플릿 추가 시트 */}
+      {showAdd && (
+        <div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+          onClick={e=>{if(e.target===e.currentTarget){setShowAdd(false);setNewTmpl({category:"예약",label:"",body:""});}}}>
+          <div style={{width:"100%",maxWidth:430,background:WH,borderRadius:"22px 22px 0 0",padding:"20px 18px 44px",maxHeight:"88vh",overflowY:"auto"}}>
+            <div style={{width:34,height:4,background:G3,borderRadius:2,margin:"0 auto 16px"}}/>
+            <div style={{fontSize:14,fontWeight:800,color:DK,marginBottom:16}}>템플릿 추가</div>
+
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>카테고리</div>
+              <input list="cat-list" value={newTmpl.category}
+                onChange={e=>setNewTmpl(p=>({...p,category:e.target.value}))}
+                placeholder="예약 / 회원권 / 기타"
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              <datalist id="cat-list">
+                {categories.map(c=><option key={c} value={c}/>)}
+              </datalist>
+            </div>
+
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>제목</div>
+              <input value={newTmpl.label} onChange={e=>setNewTmpl(p=>({...p,label:e.target.value}))}
+                placeholder="예) 생일 축하 문자"
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+            </div>
+
+            <div style={{marginBottom:6}}>
+              <div style={{fontSize:10,color:G5,fontWeight:700,marginBottom:5}}>내용</div>
+              <textarea value={newTmpl.body} onChange={e=>setNewTmpl(p=>({...p,body:e.target.value}))} rows={6}
+                placeholder="문자 내용을 입력하세요"
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,color:DK,background:WH,outline:"none",resize:"vertical",boxSizing:"border-box",fontFamily:"inherit",lineHeight:1.8}}/>
+              <div style={{fontSize:10,color:G5,marginTop:4}}>
+                사용 가능한 변수: {"{이름}  {날짜}  {시간}  {시술명}  {샵이름}  {금액}  {잔액}"}
+              </div>
+            </div>
+
+            <div style={{display:"flex",gap:8,marginTop:14}}>
+              <button onClick={()=>{setShowAdd(false);setNewTmpl({category:"예약",label:"",body:""});}}
+                style={{flex:1,padding:"13px",borderRadius:13,background:G2,border:"none",color:G7,fontSize:13,fontWeight:600,cursor:"pointer"}}>취소</button>
+              <button onClick={addTemplate} disabled={!newTmpl.label.trim()||!newTmpl.body.trim()}
+                style={{flex:2,padding:"13px",borderRadius:13,background:(!newTmpl.label.trim()||!newTmpl.body.trim())?G3:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>저장</button>
             </div>
           </div>
         </div>
