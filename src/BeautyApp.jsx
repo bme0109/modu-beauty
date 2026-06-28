@@ -1970,7 +1970,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
   const [sel, setSel] = useState(null);
   const [showR, setShowR] = useState(false);
   const [custs, setCusts] = useState(CUSTS);
-  const [nc, setNc] = useState({name:"",phone:"",memo:"",tags:[]});
+  const [nc, setNc] = useState({name:"",phone:"",memo:"",tags:[],source:""});
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState(null);
   const [selVisit, setSelVisit] = useState(null); // 방문 이력 상세 팝업
@@ -2094,6 +2094,15 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
             </div>
           </div>
           <div style={{marginBottom:12}}>
+            <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:6}}>문의 경로</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {["인스타그램","네이버","카카오","지인소개","기타"].map(s=>(
+                <button key={s} onClick={()=>setEditData(p=>({...p,source:p.source===s?"":s}))}
+                  style={{padding:"6px 12px",borderRadius:20,border:(editData.source||"")===s?"none":"1px solid "+G2,background:(editData.source||"")===s?P:WH,color:(editData.source||"")===s?WH:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>{s}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{marginBottom:12}}>
             <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>메모</div>
             <textarea value={editData.memo||""} onChange={e => setEditData(p => ({...p,memo:e.target.value}))} placeholder="특이사항, 주의사항 등" rows={4}
               style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,resize:"none",background:WH,boxSizing:"border-box",fontFamily:"inherit"}}/>
@@ -2154,6 +2163,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
               <div>
                 <div style={{fontSize:16,fontWeight:800,color:DK}}>{sel.name}</div>
                 <div style={{fontSize:12,color:G5}}>{sel.phone}</div>
+                {sel.source&&<div style={{fontSize:11,color:P,fontWeight:600,marginTop:2}}>{sel.source} 유입</div>}
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:9}}>
@@ -2456,6 +2466,15 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
               </div>
             ))}
             <div style={{marginBottom:11}}>
+              <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:6}}>문의 경로</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {["인스타그램","네이버","카카오","지인소개","기타"].map(s=>(
+                  <button key={s} onClick={()=>setNc(p=>({...p,source:p.source===s?"":s}))}
+                    style={{padding:"6px 12px",borderRadius:20,border:nc.source===s?"none":"1px solid "+G2,background:nc.source===s?P:WH,color:nc.source===s?WH:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>{s}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:11}}>
               <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:6}}>태그</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {TAGS.map(t => {
@@ -2477,7 +2496,7 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
               setCusts(p => [...p,c]);
               if(onSaveNew) onSaveNew(c);
               setShowR(false);
-              setNc({name:"",phone:"",memo:"",tags:[]});
+              setNc({name:"",phone:"",memo:"",tags:[],source:""});
             }} style={{width:"100%",padding:"13px",borderRadius:13,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>등록 완료</button>
           </div>
         </Sheet>
