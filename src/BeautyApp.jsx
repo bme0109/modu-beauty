@@ -3639,11 +3639,17 @@ function SessionTab({ sessionData, onUpdate }) {
               <input value={newForm.voucherName} onChange={e=>setNewForm(p=>({...p,voucherName:e.target.value}))} placeholder="예: 젤 네일 10회권"
                 style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
               <div>
                 <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>총 횟수 *</div>
                 <input type="number" min="1" value={newForm.total} onChange={e=>setNewForm(p=>({...p,total:e.target.value}))}
                   style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>잔여 횟수</div>
+                <div style={{padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,color:P,fontWeight:700,background:PL,textAlign:"center"}}>
+                  {newForm.total||0}
+                </div>
               </div>
               <div>
                 <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>구매금액</div>
@@ -3651,17 +3657,27 @@ function SessionTab({ sessionData, onUpdate }) {
                   style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-              <div>
-                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>구매일</div>
-                <input type="date" value={newForm.purchaseDate} onChange={e=>setNewForm(p=>({...p,purchaseDate:e.target.value}))}
-                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>구매일</div>
+              <input type="date" value={newForm.purchaseDate} onChange={e=>setNewForm(p=>({...p,purchaseDate:e.target.value}))}
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>유효기간</div>
+              <div style={{display:"flex",gap:6,marginBottom:7}}>
+                {[["3개월",3],["6개월",6],["1년",12]].map(([label,months])=>(
+                  <button key={label} onClick={()=>{
+                    const base=newForm.purchaseDate||TODAY;
+                    const d=new Date(base);
+                    d.setMonth(d.getMonth()+months);
+                    setNewForm(p=>({...p,expiry:d.toISOString().slice(0,10)}));
+                  }} style={{flex:1,padding:"8px 0",borderRadius:9,border:"1px solid "+G2,background:WH,color:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                    {label}
+                  </button>
+                ))}
               </div>
-              <div>
-                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>유효기간</div>
-                <input type="date" value={newForm.expiry} onChange={e=>setNewForm(p=>({...p,expiry:e.target.value}))}
-                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
-              </div>
+              <input type="date" value={newForm.expiry} onChange={e=>setNewForm(p=>({...p,expiry:e.target.value}))}
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
             </div>
             <button onClick={addVoucher} style={{width:"100%",padding:"13px",borderRadius:13,background:P,border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>등록 완료</button>
           </div>
