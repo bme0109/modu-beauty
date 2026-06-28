@@ -3273,8 +3273,8 @@ function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [staffFilter, setStaffFilter] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(addDays(TODAY,-30));
+  const [endDate, setEndDate] = useState(TODAY);
 
   function getRangeDates(r) {
     const today = new Date(TODAY);
