@@ -4787,7 +4787,7 @@ export default function App({ session, onLogout, onChangePassword }) {
   const [tab, setTab] = useState("home");
   const [menuOpen, setMenu] = useState(false);
   const [ttDate, setTtDate] = useState(TODAY);
-  const [shopName, setShopName] = useState(() => localStorage.getItem("shopName") || session?.shopName || "Modu Beauty");
+  const [shopName, setShopName] = useState(() => localStorage.getItem("shopName") || session?.shopName || "Your Salon");
   const [naverUrl, setNaverUrl] = useState(() => localStorage.getItem("naverUrl") || "");
   const [modal, setModal] = useState(null);
   const [settingsSub, setSettingsSub] = useState(null);
@@ -5077,7 +5077,7 @@ export default function App({ session, onLogout, onChangePassword }) {
             <ellipse cx="18" cy="22" rx="4" ry="2.2" fill="rgba(255,255,255,0.7)"/>
           </svg>
         </div>
-        <p style={{color:"rgba(255,255,255,0.9)",fontSize:16,fontFamily:"Georgia,serif",letterSpacing:2}}>Modu Beauty</p>
+        <p style={{color:"rgba(255,255,255,0.9)",fontSize:16,fontFamily:"Georgia,serif",letterSpacing:2}}>Your Salon</p>
         <p style={{color:"rgba(255,255,255,0.6)",fontSize:12,marginTop:4}}>데이터 불러오는 중...</p>
       </div>
     </div>

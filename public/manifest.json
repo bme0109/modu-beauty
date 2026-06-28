@@ -1,6 +1,6 @@
 {
-  "name": "모두의뷰티",
-  "short_name": "모두의뷰티",
+  "name": "유어살롱",
+  "short_name": "유어살롱",
   "description": "뷰티샵 예약 관리 앱",
   "start_url": "/",
   "display": "standalone",
