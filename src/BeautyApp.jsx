@@ -2564,6 +2564,114 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
 // ─────────────────────────────────────────────────────────────────────────
 // 지출관리 페이지
 // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// PC 오른쪽 대시보드 패널
+// ─────────────────────────────────────────────────────────────────────────
+function RightPanel({ paidBks, prepaidData, sessionData, bookings }) {
+  const [memo, setMemo] = useState(() => { try { return localStorage.getItem("dashboard_memo")||""; } catch { return ""; } });
+
+  const contactToday = (bookings||[]).filter(b => b.nextContact === TODAY);
+  const todayBks = (bookings||[]).filter(b => b.date === TODAY).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+  const expiringPrepaid = (prepaidData||[]).filter(d=>{const dl=daysLeft(d.expiry);return dl!==null&&dl<=30&&dl>0;}).sort((a,b)=>daysLeft(a.expiry)-daysLeft(b.expiry));
+  const expiringSessions = (sessionData||[]).filter(d=>{const rem=d.total-d.used;if(rem<=0)return false;const dl=d.expiry?daysLeft(d.expiry):null;return dl!==null&&dl<=30&&dl>0;}).sort((a,b)=>daysLeft(a.expiry)-daysLeft(b.expiry));
+
+  const SectionTitle = ({icon, text, count}) => (
+    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:8}}>
+      <span style={{fontSize:13}}>{icon}</span>
+      <span style={{fontSize:11,fontWeight:700,color:G5,letterSpacing:0.2}}>{text}</span>
+      {count>0&&<span style={{fontSize:10,fontWeight:700,color:WH,background:P,borderRadius:9,padding:"1px 6px",marginLeft:"auto"}}>{count}</span>}
+    </div>
+  );
+
+  return (
+    <div style={{width:272,minWidth:272,height:"100vh",position:"fixed",right:0,top:0,background:BG,borderLeft:"1px solid "+G2,overflowY:"auto",zIndex:90,padding:"16px 13px",boxSizing:"border-box",scrollbarWidth:"thin"}}>
+
+      {/* 메모 */}
+      <div style={{background:WH,borderRadius:13,padding:"12px",border:"1px solid "+G2,marginBottom:10}}>
+        <SectionTitle icon="📝" text="메모" count={0}/>
+        <textarea value={memo} onChange={e=>{setMemo(e.target.value);localStorage.setItem("dashboard_memo",e.target.value);}}
+          placeholder="메모를 입력하세요..." rows={4}
+          style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid "+G2,fontSize:12,color:DK,background:BG,resize:"none",outline:"none",fontFamily:"inherit",lineHeight:1.6,boxSizing:"border-box"}}/>
+      </div>
+
+      {/* 오늘 예약 */}
+      <div style={{background:WH,borderRadius:13,padding:"12px",border:"1px solid "+G2,marginBottom:10}}>
+        <SectionTitle icon="📅" text="오늘 예약" count={todayBks.length}/>
+        {todayBks.length===0
+          ? <div style={{fontSize:11,color:G5,textAlign:"center",padding:"8px 0"}}>오늘 예약 없음</div>
+          : todayBks.slice(0,6).map(b=>{
+              const paid=!!paidBks?.[b.id];
+              return (
+                <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 8px",borderRadius:9,background:paid?"#F0FDF6":PS,marginBottom:5,border:"1px solid "+(paid?GR+"30":G2)}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:700,color:DK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name}</div>
+                    <div style={{fontSize:10,color:G5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.svc}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0,marginLeft:6}}>
+                    <div style={{fontSize:11,fontWeight:700,color:P}}>{b.time}</div>
+                    {paid&&<div style={{fontSize:9,color:GR,fontWeight:700}}>결제완료</div>}
+                  </div>
+                </div>
+              );
+            })
+        }
+        {todayBks.length>6&&<div style={{fontSize:10,color:G5,textAlign:"center",marginTop:3}}>+{todayBks.length-6}건 더</div>}
+      </div>
+
+      {/* 오늘 연락할 고객 */}
+      {contactToday.length>0&&(
+        <div style={{background:WH,borderRadius:13,padding:"12px",border:"1.5px solid #C4DEFF",marginBottom:10}}>
+          <SectionTitle icon="📞" text="오늘 재방문 연락" count={contactToday.length}/>
+          {contactToday.map(b=>(
+            <div key={b.id} style={{background:"#EEF6FF",borderRadius:9,padding:"7px 9px",marginBottom:5,border:"1px solid #C4DEFF"}}>
+              <div style={{fontSize:12,fontWeight:700,color:DK}}>{b.name}</div>
+              <div style={{fontSize:10,color:G5}}>{b.svc}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 선불권 만료 임박 */}
+      {expiringPrepaid.length>0&&(
+        <div style={{background:WH,borderRadius:13,padding:"12px",border:"1.5px solid #FFD48A",marginBottom:10}}>
+          <SectionTitle icon="⚠️" text="선불권 만료 임박" count={expiringPrepaid.length}/>
+          {expiringPrepaid.slice(0,4).map(d=>(
+            <div key={d.custId||d.custName} style={{background:"#FFF8E8",borderRadius:9,padding:"7px 9px",marginBottom:5,border:"1px solid #FFE0A0"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:12,fontWeight:700,color:DK}}>{d.custName}</span>
+                <span style={{fontSize:10,fontWeight:800,color:"#B8860B",background:"#FFD48A",borderRadius:5,padding:"1px 6px"}}>D-{daysLeft(d.expiry)}</span>
+              </div>
+              <div style={{fontSize:10,color:G5,marginTop:2}}>{(d.balance||0).toLocaleString()}원 잔액</div>
+            </div>
+          ))}
+          {expiringPrepaid.length>4&&<div style={{fontSize:10,color:G5,textAlign:"center"}}>+{expiringPrepaid.length-4}명 더</div>}
+        </div>
+      )}
+
+      {/* 횟수권 만료 임박 */}
+      {expiringSessions.length>0&&(
+        <div style={{background:WH,borderRadius:13,padding:"12px",border:"1.5px solid "+PM,marginBottom:10}}>
+          <SectionTitle icon="🎫" text="횟수권 만료 임박" count={expiringSessions.length}/>
+          {expiringSessions.slice(0,4).map(d=>{
+            const rem=d.total-d.used;
+            return (
+              <div key={d.id} style={{background:PL,borderRadius:9,padding:"7px 9px",marginBottom:5,border:"1px solid "+G3}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,fontWeight:700,color:DK}}>{d.custName}</span>
+                  <span style={{fontSize:10,fontWeight:800,color:P,background:"#E0D8FF",borderRadius:5,padding:"1px 6px"}}>D-{daysLeft(d.expiry)}</span>
+                </div>
+                <div style={{fontSize:10,color:G5,marginTop:2}}>{d.voucherName} · 잔여 {rem}회</div>
+              </div>
+            );
+          })}
+          {expiringSessions.length>4&&<div style={{fontSize:10,color:G5,textAlign:"center"}}>+{expiringSessions.length-4}명 더</div>}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
 function ExpensePage({ expenseData, onUpdate, fixedCosts, onUpdateFixed, paidBks }) {
   const months = Array.from({length:6},(_,i)=>{
     const d=new Date(TODAY); d.setMonth(d.getMonth()-i);
@@ -5744,8 +5852,11 @@ export default function App({ session, onLogout, onChangePassword }) {
         </aside>
       )}
 
+      {/* ── PC 오른쪽 패널 ── */}
+      {isDesktop && <RightPanel paidBks={paidBks} prepaidData={prepaidData} sessionData={sessionData} bookings={bookings}/>}
+
       {/* ── 메인 컨텐츠 래퍼 ── */}
-      <div style={isDesktop?{marginLeft:224,minHeight:"100vh",overflowX:"hidden",background:BG}:{width:"100%",maxWidth:430,margin:"0 auto",paddingBottom:72,overflowX:"hidden",boxSizing:"border-box"}}>
+      <div style={isDesktop?{marginLeft:224,marginRight:272,minHeight:"100vh",overflowX:"hidden",background:BG}:{width:"100%",maxWidth:430,margin:"0 auto",paddingBottom:72,overflowX:"hidden",boxSizing:"border-box"}}>
 
         {/* PC 상단 헤더바 */}
         {isDesktop && (
