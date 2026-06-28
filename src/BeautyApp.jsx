@@ -3308,8 +3308,8 @@ function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete }) {
   filtered=[...filtered].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
 
   const RANGE_BTNS=[
-    {k:"today",l:"오늘"},{k:"1month",l:"1개월"},{k:"3months",l:"3개월"},
-    {k:"6months",l:"6개월"},{k:"all",l:"전체"},{k:"custom",l:"기간선택"},
+    {k:"2weeks",l:"2주"},{k:"1month",l:"한달"},{k:"3months",l:"3개월"},
+    {k:"all",l:"전체"},{k:"custom",l:"기간선택"},
   ];
 
   return (
