@@ -2166,13 +2166,11 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
                 {sel.source&&<div style={{fontSize:11,color:P,fontWeight:600,marginTop:2}}>{sel.source} 유입</div>}
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginBottom:9}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:9}}>
               {(()=>{
                 const prepaidRec=(prepaidData||[]).find(d=>d.custName===sel.name);
                 const prepaidBal=prepaidRec?(prepaidRec.balance||0):0;
-                const sessRec=SESSION_DATA.filter(d=>d.custName===sel.name&&(d.total-d.used)>0);
-                const sessRemain=sessRec.reduce((s,d)=>s+(d.total-d.used),0);
-                return [{l:"방문횟수",v:sel.visits+"회"},{l:"누적매출",v:(sel.revenue/10000).toFixed(0)+"만원"},{l:"선불권",v:prepaidBal.toLocaleString()+"원"},{l:"횟수권",v:sessRemain>0?sessRemain+"회 남음":"-"}];
+                return [{l:"방문횟수",v:sel.visits+"회"},{l:"누적매출",v:(sel.revenue/10000).toFixed(0)+"만원"},{l:"선불권",v:prepaidBal.toLocaleString()+"원"}];
               })().map((s,i) => (
                 <div key={i} style={{background:PS,borderRadius:10,padding:"8px",textAlign:"center"}}>
                   <div style={{fontSize:9,color:G5,marginBottom:3}}>{s.l}</div>
@@ -2197,6 +2195,33 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   선불권 잔액 안내 문자
                 </button>
+              );
+            })()}
+            {(()=>{
+              const sessRecs=SESSION_DATA.filter(d=>d.custName===sel.name);
+              if(!sessRecs.length) return null;
+              return (
+                <div style={{marginBottom:9}}>
+                  <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>횟수권</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {sessRecs.map(d=>{
+                      const rem=d.total-d.used;
+                      const isDone=rem<=0;
+                      const dl=d.expiry?daysLeft(d.expiry):null;
+                      const isExp=dl!==null&&dl<=0;
+                      return (
+                        <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:isDone||isExp?G3:PL,borderRadius:9,padding:"8px 12px"}}>
+                          <div>
+                            <span style={{fontSize:12,fontWeight:700,color:isDone||isExp?G5:DK}}>{d.voucherName}</span>
+                            {isExp&&<span style={{fontSize:10,color:RD,marginLeft:5}}>만료</span>}
+                            {isDone&&!isExp&&<span style={{fontSize:10,color:G5,marginLeft:5}}>완료</span>}
+                          </div>
+                          <span style={{fontSize:14,fontWeight:800,color:isDone||isExp?G5:P}}>{rem}회</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })()}
             {sel.tags.length>0 && (
