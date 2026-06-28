@@ -2551,7 +2551,276 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
 }
 
 // ── 매출 페이지 ───────────────────────────────────────
-function SalesPage({ paidBks, onDeletePaid }) {
+// ─────────────────────────────────────────────────────────────────────────
+// 지출관리 페이지
+// ─────────────────────────────────────────────────────────────────────────
+function ExpensePage({ expenseData, onUpdate, fixedCosts, onUpdateFixed, paidBks }) {
+  const months = Array.from({length:6},(_,i)=>{
+    const d=new Date(TODAY); d.setMonth(d.getMonth()-i);
+    return d.toISOString().slice(0,7);
+  });
+  const [curMonth, setCurMonth] = useState(TODAY.slice(0,7));
+  const [activeTab, setActiveTab] = useState("list");
+  const [showAdd, setShowAdd] = useState(false);
+  const [addMode, setAddMode] = useState("manual");
+  const [form, setForm] = useState({date:TODAY, category:"재료비", name:"", amount:"", memo:""});
+  const [pasteText, setPasteText] = useState("");
+  const CATEGORIES = ["월세","재료비","구독료","보험료","광고비","기타"];
+  const [newFixed, setNewFixed] = useState({name:"", amount:"", category:"월세"});
+
+  const ed = expenseData||[];
+  const fc = fixedCosts||[];
+  const monthExpenses = ed.filter(e=>e.date.startsWith(curMonth)).sort((a,b)=>b.date.localeCompare(a.date));
+  const monthTotal = monthExpenses.reduce((s,e)=>s+(e.amount||0),0);
+  const monthRevenue = Object.values(paidBks||{}).filter(p=>p.date&&p.date.startsWith(curMonth)).reduce((s,p)=>s+(p.amount||0),0);
+  const netProfit = monthRevenue - monthTotal;
+
+  function resetAdd() { setShowAdd(false); setAddMode("manual"); setPasteText(""); setForm({date:TODAY,category:"재료비",name:"",amount:"",memo:""}); }
+
+  function addExpense() {
+    if(!form.name.trim()||!form.amount) return;
+    onUpdate([...ed, {id:Date.now(), ...form, amount:Number(form.amount)}]);
+    resetAdd();
+  }
+
+  function deleteExpense(id) { onUpdate(ed.filter(e=>e.id!==id)); }
+
+  function parsePaste(text) {
+    const amountMatch = text.match(/([0-9,]{2,})\s*원/);
+    const amount = amountMatch ? Number(amountMatch[1].replace(/,/g,"")) : "";
+    const dm = text.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+    const date = dm ? `${dm[1]}-${String(dm[2]).padStart(2,"0")}-${String(dm[3]).padStart(2,"0")}` : TODAY;
+    const name = text.split(/\n/).map(l=>l.trim()).find(l=>l.length>1&&!/^\d/.test(l)) || text.split(/\n/)[0]?.slice(0,30) || "";
+    setForm(p=>({...p, name:name.slice(0,40), amount:String(amount), date}));
+    setPasteText("");
+    setAddMode("manual");
+  }
+
+  function applyFixedCosts() {
+    const existing = ed.filter(e=>e.date.startsWith(curMonth));
+    const toAdd = fc.filter(f=>f.active && !existing.find(e=>e.fixedId===f.id));
+    if(!toAdd.length) { alert("추가할 고정비가 없거나 이미 추가되었습니다."); return; }
+    const date = curMonth+"-01";
+    onUpdate([...ed, ...toAdd.map(f=>({id:Date.now()+Math.random(), date, category:f.category, name:f.name, amount:f.amount, memo:"", fixedId:f.id}))]);
+  }
+
+  function addFixed() {
+    if(!newFixed.name.trim()||!newFixed.amount) return;
+    onUpdateFixed([...fc, {id:Date.now(), ...newFixed, amount:Number(newFixed.amount), active:true}]);
+    setNewFixed({name:"",amount:"",category:"월세"});
+  }
+
+  const catColors = {월세:"#6C6BD9",재료비:OR,구독료:GR,보험료:"#FF9500",광고비:P,고정비:"#6C6BD9",기타:G5};
+
+  return (
+    <div style={{paddingBottom:90}}>
+      {/* 탭 */}
+      <div style={{display:"flex",background:WH,borderBottom:"1px solid "+G2,position:"sticky",top:50,zIndex:49}}>
+        {[{k:"list",l:"지출 내역"},{k:"fixed",l:"고정비 설정"}].map(({k,l})=>(
+          <button key={k} onClick={()=>setActiveTab(k)}
+            style={{flex:1,padding:"12px 0",background:"none",border:"none",borderBottom:activeTab===k?"2.5px solid "+P:"2.5px solid transparent",color:activeTab===k?P:G5,fontSize:13,fontWeight:activeTab===k?800:500,cursor:"pointer"}}>{l}</button>
+        ))}
+      </div>
+
+      {activeTab==="list" ? (
+        <div style={{padding:"12px 14px"}}>
+          {/* 월 선택 */}
+          <div style={{display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none",marginBottom:12,paddingBottom:2}}>
+            {months.map(m=>(
+              <button key={m} onClick={()=>setCurMonth(m)}
+                style={{flexShrink:0,padding:"5px 13px",borderRadius:8,border:"1px solid "+(curMonth===m?P:G2),background:curMonth===m?P:WH,color:curMonth===m?WH:G7,fontSize:12,fontWeight:curMonth===m?700:400,cursor:"pointer"}}>
+                {m.slice(5)}월
+              </button>
+            ))}
+          </div>
+
+          {/* 요약 카드 */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+            <div style={{background:WH,borderRadius:13,padding:"12px 8px",border:"1px solid "+G2,textAlign:"center"}}>
+              <div style={{fontSize:9,color:G5,marginBottom:3}}>이번달 매출</div>
+              <div style={{fontSize:13,fontWeight:800,color:GR}}>{(monthRevenue/10000).toFixed(1)}만</div>
+            </div>
+            <div style={{background:WH,borderRadius:13,padding:"12px 8px",border:"1px solid "+G2,textAlign:"center"}}>
+              <div style={{fontSize:9,color:G5,marginBottom:3}}>총 지출</div>
+              <div style={{fontSize:13,fontWeight:800,color:RD}}>{(monthTotal/10000).toFixed(1)}만</div>
+            </div>
+            <div style={{background:netProfit>=0?GRL:"#FFF0F0",borderRadius:13,padding:"12px 8px",border:"1px solid "+(netProfit>=0?GR:RD),textAlign:"center"}}>
+              <div style={{fontSize:9,color:G5,marginBottom:3}}>순수익</div>
+              <div style={{fontSize:13,fontWeight:800,color:netProfit>=0?GR:RD}}>{(netProfit/10000).toFixed(1)}만</div>
+            </div>
+          </div>
+
+          {/* 버튼 */}
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <button onClick={()=>setShowAdd(true)}
+              style={{flex:1,padding:"11px",borderRadius:11,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>+ 지출 추가</button>
+            <button onClick={applyFixedCosts}
+              style={{flex:"0 0 auto",padding:"11px 14px",borderRadius:11,background:WH,border:"1px solid "+G2,color:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>고정비 가져오기</button>
+          </div>
+
+          {/* 카테고리별 합계 */}
+          {monthExpenses.length > 0 && (
+            <div style={{background:WH,borderRadius:13,padding:"12px 13px",border:"1px solid "+G2,marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:DK,marginBottom:8}}>카테고리별</div>
+              {Object.entries(monthExpenses.reduce((acc,e)=>{const cat=e.category||"기타";acc[cat]=(acc[cat]||0)+e.amount;return acc;},{})).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>(
+                <div key={cat} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:catColors[cat]||G5}}/>
+                    <span style={{fontSize:11,color:DK}}>{cat}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:60,height:4,background:G2,borderRadius:2}}>
+                      <div style={{width:monthTotal>0?(amt/monthTotal*100).toFixed(0)+"%":"0%",height:"100%",background:catColors[cat]||G5,borderRadius:2}}/>
+                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:RD,minWidth:50,textAlign:"right"}}>{amt.toLocaleString()}원</span>
+                  </div>
+                </div>
+              ))}
+              <div style={{borderTop:"1px solid "+G2,marginTop:8,paddingTop:8,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:11,fontWeight:700,color:DK}}>합계</span>
+                <span style={{fontSize:12,fontWeight:800,color:RD}}>{monthTotal.toLocaleString()}원</span>
+              </div>
+            </div>
+          )}
+
+          {/* 지출 목록 */}
+          {monthExpenses.length===0 ? (
+            <div style={{textAlign:"center",padding:"40px 0",color:G5,fontSize:13}}>이번달 지출 내역이 없어요</div>
+          ) : monthExpenses.map(e=>(
+            <div key={e.id} style={{background:WH,borderRadius:12,padding:"12px 13px",marginBottom:7,border:"1px solid "+G2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:3}}>
+                  <span style={{fontSize:9,color:WH,background:catColors[e.category]||G5,borderRadius:5,padding:"1px 6px",fontWeight:700,flexShrink:0}}>{e.category}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:DK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.name}</span>
+                </div>
+                <div style={{fontSize:10,color:G5}}>{e.date.slice(5).replace("-",".")}{e.memo?" · "+e.memo:""}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                <span style={{fontSize:13,fontWeight:700,color:RD}}>{(e.amount||0).toLocaleString()}원</span>
+                <button onClick={()=>deleteExpense(e.id)} style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,lineHeight:1,padding:"0 2px"}}>×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* 고정비 설정 탭 */
+        <div style={{padding:"14px"}}>
+          <div style={{background:"#FFF8E7",borderRadius:12,padding:"11px 13px",marginBottom:14,fontSize:11,color:"#B8860B",lineHeight:1.6}}>
+            고정비를 등록해두면 "고정비 가져오기" 버튼으로 해당 월에 한번에 추가할 수 있어요.
+          </div>
+          {/* 고정비 추가 폼 */}
+          <div style={{background:WH,borderRadius:14,padding:"14px",border:"1px solid "+G2,marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:10}}>고정비 추가</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:9}}>
+              {["월세","구독료","보험료","광고비","기타"].map(cat=>(
+                <button key={cat} onClick={()=>setNewFixed(p=>({...p,category:cat}))}
+                  style={{padding:"5px 11px",borderRadius:8,border:"1px solid "+(newFixed.category===cat?P:G2),background:newFixed.category===cat?P:WH,color:newFixed.category===cat?WH:G7,fontSize:11,fontWeight:600,cursor:"pointer"}}>{cat}</button>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:9}}>
+              <input value={newFixed.name} onChange={e=>setNewFixed(p=>({...p,name:e.target.value}))} placeholder="항목명 (예: 월세)"
+                style={{padding:"9px 11px",borderRadius:9,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH}}/>
+              <input type="number" value={newFixed.amount} onChange={e=>setNewFixed(p=>({...p,amount:e.target.value}))} placeholder="월 금액"
+                style={{padding:"9px 11px",borderRadius:9,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH}}/>
+            </div>
+            <button onClick={addFixed}
+              style={{width:"100%",padding:"10px",borderRadius:10,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer"}}>추가</button>
+          </div>
+          {/* 고정비 목록 */}
+          {fc.length===0 && <div style={{textAlign:"center",padding:"24px 0",color:G5,fontSize:12}}>등록된 고정비가 없어요</div>}
+          {fc.map(f=>(
+            <div key={f.id} style={{background:WH,borderRadius:12,padding:"12px 13px",marginBottom:7,border:"1px solid "+G2,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                  <span style={{fontSize:9,color:WH,background:f.active?catColors[f.category]||P:G5,borderRadius:5,padding:"1px 6px",fontWeight:700}}>{f.category}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:f.active?DK:G5}}>{f.name}</span>
+                </div>
+                <div style={{fontSize:11,color:G5}}>{(f.amount||0).toLocaleString()}원 / 월</div>
+              </div>
+              <div style={{display:"flex",gap:7,alignItems:"center"}}>
+                <button onClick={()=>onUpdateFixed(fc.map(x=>x.id===f.id?{...x,active:!x.active}:x))}
+                  style={{padding:"4px 10px",borderRadius:7,background:f.active?GRL:G2,border:"1px solid "+(f.active?GR:G5),color:f.active?GR:G5,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                  {f.active?"활성":"비활성"}
+                </button>
+                <button onClick={()=>onUpdateFixed(fc.filter(x=>x.id!==f.id))}
+                  style={{background:"none",border:"none",cursor:"pointer",color:G5,fontSize:18,lineHeight:1,padding:"0 2px"}}>×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 지출 추가 시트 */}
+      {showAdd && (
+        <Sheet onClose={resetAdd} maxH="90vh">
+          <SheetHandle title="지출 추가" onClose={resetAdd}/>
+          <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
+            {/* 입력 방식 선택 */}
+            <div style={{display:"flex",gap:8,marginBottom:14}}>
+              {[{k:"manual",l:"직접 입력"},{k:"paste",l:"텍스트 붙여넣기"}].map(({k,l})=>(
+                <button key={k} onClick={()=>setAddMode(k)}
+                  style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid "+(addMode===k?P:G2),background:addMode===k?P:WH,color:addMode===k?WH:G7,fontSize:12,fontWeight:addMode===k?700:500,cursor:"pointer"}}>{l}</button>
+              ))}
+            </div>
+
+            {addMode==="paste" ? (
+              <>
+                <div style={{background:"#F0F4FF",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:11,color:"#5566AA",lineHeight:1.7}}>
+                  카드 문자, 주문내역, 영수증 문자 등을 붙여넣으면 금액과 내용을 자동으로 인식해요.
+                </div>
+                <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)}
+                  placeholder={"예)\n아크릴 파우더 구매\n2026-06-28\n총 금액: 35,000원"} rows={7}
+                  style={{width:"100%",padding:"11px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,resize:"none",background:WH,boxSizing:"border-box",fontFamily:"inherit"}}/>
+                <button onClick={()=>parsePaste(pasteText)} disabled={!pasteText.trim()}
+                  style={{width:"100%",padding:"12px",borderRadius:11,background:pasteText.trim()?P:G2,border:"none",color:pasteText.trim()?WH:G5,fontSize:13,fontWeight:700,cursor:pasteText.trim()?"pointer":"not-allowed",marginTop:10}}>
+                  내용 인식하기
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{marginBottom:11}}>
+                  <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:6}}>카테고리</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {CATEGORIES.map(cat=>(
+                      <button key={cat} onClick={()=>setForm(p=>({...p,category:cat}))}
+                        style={{padding:"6px 12px",borderRadius:20,border:"1px solid "+(form.category===cat?P:G2),background:form.category===cat?P:WH,color:form.category===cat?WH:G7,fontSize:12,fontWeight:600,cursor:"pointer"}}>{cat}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{marginBottom:11}}>
+                  <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>항목명 *</div>
+                  <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="예: 아크릴 파우더, 월세"
+                    style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:11}}>
+                  <div>
+                    <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>금액 *</div>
+                    <input type="number" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0"
+                      style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>날짜</div>
+                    <input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}
+                      style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                  </div>
+                </div>
+                <div style={{marginBottom:18}}>
+                  <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>메모</div>
+                  <input value={form.memo} onChange={e=>setForm(p=>({...p,memo:e.target.value}))} placeholder="선택사항"
+                    style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                </div>
+                <button onClick={addExpense}
+                  style={{width:"100%",padding:"13px",borderRadius:13,background:P,border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>저장</button>
+              </>
+            )}
+          </div>
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+function SalesPage({ paidBks, onDeletePaid, expenseData }) {
   const [showDetail, setShowDetail] = useState(null); // "today" | "month"
   const curMonth = TODAY.slice(0,7);
   const allEntries = Object.entries(paidBks||{});
@@ -2559,6 +2828,8 @@ function SalesPage({ paidBks, onDeletePaid }) {
   const monthEntries = allEntries.filter(([,p])=>p.date&&p.date.slice(0,7)===curMonth);
   const total = monthEntries.reduce((s,[,p])=>s+(p.amount||0),0);
   const td = todayEntries.reduce((s,[,p])=>s+(p.amount||0),0);
+  const monthExpenseTotal = (expenseData||[]).filter(e=>e.date.startsWith(curMonth)).reduce((s,e)=>s+(e.amount||0),0);
+  const netProfit = total - monthExpenseTotal;
   const byS = [0,1].map(id => {
     const me = monthEntries.filter(([bkId])=>{ const b=BKS.find(x=>String(x.id)===bkId); return b&&b.sid===id; });
     return { n:"담당자"+(id+1), r:me.reduce((s,[,p])=>s+(p.amount||0),0), c:me.length };
@@ -2609,6 +2880,21 @@ function SalesPage({ paidBks, onDeletePaid }) {
           </div>
         ))}
       </div>
+      {/* 이번달 지출/순수익 요약 */}
+      {(monthExpenseTotal > 0 || netProfit !== total) && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:12}}>
+          <div style={{background:WH,borderRadius:14,padding:"13px",border:"1px solid "+G2}}>
+            <div style={{fontSize:10,color:G5,marginBottom:4}}>이번달 지출</div>
+            <div style={{fontSize:18,fontWeight:800,color:RD}}>{monthExpenseTotal.toLocaleString()}</div>
+            <div style={{fontSize:9,color:G5,marginTop:2}}>{new Date().getMonth()+1}월 전체</div>
+          </div>
+          <div style={{background:netProfit>=0?GRL:"#FFF0F0",borderRadius:14,padding:"13px",border:"1px solid "+(netProfit>=0?GR:RD)}}>
+            <div style={{fontSize:10,color:G5,marginBottom:4}}>이번달 순수익</div>
+            <div style={{fontSize:18,fontWeight:800,color:netProfit>=0?GR:RD}}>{netProfit.toLocaleString()}</div>
+            <div style={{fontSize:9,color:G5,marginTop:2}}>매출 - 지출</div>
+          </div>
+        </div>
+      )}
       <div style={{background:WH,borderRadius:14,padding:"13px",border:"1px solid "+G2,marginBottom:10}}>
         <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:10}}>담당자별 매출 <span style={{fontSize:10,color:G5,fontWeight:400}}>이번달</span></div>
         {byS.map((s,i) => (
@@ -5079,6 +5365,25 @@ export default function App({ session, onLogout, onChangePassword }) {
     if(uid) localStorage.setItem('sessions_'+uid, JSON.stringify(sessionData));
   }, [sessionData, uid]);
 
+  // 지출 데이터
+  const [expenseData, setExpenseData] = useState(() => {
+    const uid0 = session?.uid;
+    if(!uid0) return [];
+    try { return JSON.parse(localStorage.getItem('expenses_'+uid0)||'[]'); } catch { return []; }
+  });
+  useEffect(() => {
+    if(uid) localStorage.setItem('expenses_'+uid, JSON.stringify(expenseData));
+  }, [expenseData, uid]);
+  // 고정비 설정
+  const [fixedCosts, setFixedCosts] = useState(() => {
+    const uid0 = session?.uid;
+    if(!uid0) return [];
+    try { return JSON.parse(localStorage.getItem('fixed_costs_'+uid0)||'[]'); } catch { return []; }
+  });
+  useEffect(() => {
+    if(uid) localStorage.setItem('fixed_costs_'+uid, JSON.stringify(fixedCosts));
+  }, [fixedCosts, uid]);
+
   // 다크모드 퍼시스트 + 스태프 배경 동기화 + body 배경
   useEffect(() => {
     localStorage.setItem('isDark', JSON.stringify(isDark));
@@ -5333,6 +5638,7 @@ export default function App({ session, onLogout, onChangePassword }) {
     {l:"예약내역",a:()=>{setTab("booking_history");setMenu(false);}},
     {l:"회원권관리",a:()=>{setTab("prepaid");setMenu(false);}},
     {l:"매출분석",a:()=>{setTab("sales");setMenu(false);}},
+    {l:"지출관리",a:()=>{setTab("expense");setMenu(false);}},
     {l:"문자발송",a:()=>{setTab("sms");setMenu(false);}},
   ];
 
@@ -5374,7 +5680,8 @@ export default function App({ session, onLogout, onChangePassword }) {
         {tab==="timetable" && <TT date={ttDate} onAdd={openModal} staff={staff} onPay={openPayment} paidBks={paidBks} treatmentRecords={treatmentRecords} onRecord={openRecord} onCancelPay={requestCancelPay} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} slotUnit={slotUnit}/>}
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
-        {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
+        {tab==="sales" && <SalesPage paidBks={paidBks} expenseData={expenseData} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
+        {tab==="expense" && <ExpensePage expenseData={expenseData} onUpdate={setExpenseData} fixedCosts={fixedCosts} onUpdateFixed={setFixedCosts} paidBks={paidBks}/>}
         {tab==="booking_history" && <BookingHistoryPage paidBks={paidBks} staff={staff} onPay={openPayment} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} onDelete={b=>{if(paidBks[b.id])cancelPayment(b.id);removeBooking(b.firestoreId);}} onDeleteAll={async()=>{const all=[...BKS];for(const b of all){if(paidBks[b.id])cancelPayment(b.id);await removeBooking(b.firestoreId);}BKS=[];setPaidBks({});}}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData} sessionData={sessionData} onSessionUpdate={setSessionData}/>}
         {tab==="sms" && <SmsSendPage shopName={shopName} uid={uid}/>}
