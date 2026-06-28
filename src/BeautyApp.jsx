@@ -2388,10 +2388,22 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
               가나다순
             </button>
           </div>
-          <button onClick={()=>{setShowNaverImport(v=>!v);setImportResult(null);}}
-            style={{padding:"3px 9px",borderRadius:8,background:showNaverImport?G2:"#E8F9EE",border:"1px solid "+(showNaverImport?G2:"#03C75A"),color:showNaverImport?G7:"#009444",fontSize:11,fontWeight:700,cursor:"pointer"}}>
-            N 고객 가져오기
-          </button>
+          <div style={{display:"flex",gap:5}}>
+            <button onClick={()=>{
+              const rows=CUSTS.map(c=>{
+                const visits=BKS.filter(b=>b.name===c.name&&b.status!=="cancel"&&b.status!=="noshow").length;
+                const lastVisit=BKS.filter(b=>b.name===c.name&&b.status!=="cancel"&&b.status!=="noshow").sort((a,b)=>b.date.localeCompare(a.date))[0]?.date||"";
+                return [c.name,c.phone,c.birth||"",visits,lastVisit,(c.tags||[]).join("/"),c.memo||""];
+              });
+              downloadCSV("고객목록_"+TODAY+".csv",["이름","전화번호","생년월일","방문횟수","최근방문","태그","메모"],rows);
+            }} style={{padding:"3px 9px",borderRadius:8,background:WH,border:"1px solid "+G2,color:G7,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+              엑셀
+            </button>
+            <button onClick={()=>{setShowNaverImport(v=>!v);setImportResult(null);}}
+              style={{padding:"3px 9px",borderRadius:8,background:showNaverImport?G2:"#E8F9EE",border:"1px solid "+(showNaverImport?G2:"#03C75A"),color:showNaverImport?G7:"#009444",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+              N 고객 가져오기
+            </button>
+          </div>
         </div>
         {showNaverImport && (
           <div style={{marginTop:8,padding:"10px 12px",background:"#F5F3FC",borderRadius:12}}>
@@ -3221,6 +3233,16 @@ function addDays(dateStr, days) {
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0,10);
 }
+function downloadCSV(filename, headers, rows) {
+  const BOM = "﻿";
+  const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  const csv = BOM + [headers, ...rows].map(r => r.map(esc).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 function buildPrepaidFromPaidBks(paidBks) {
   const map = {};
   const entries = Object.entries(paidBks).sort((a,b)=>(a[1].date||'').localeCompare(b[1].date||''));
@@ -3331,8 +3353,25 @@ function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete }) {
       </div>
 
       <div style={{padding:"10px 13px 4px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:12,color:G5}}>총 <b style={{color:DK}}>{filtered.length}</b>건</span>
-        <span style={{fontSize:12,color:G5}}>결제완료 <b style={{color:GR}}>{filtered.filter(b=>paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow").length}</b>건</span>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:12,color:G5}}>총 <b style={{color:DK}}>{filtered.length}</b>건</span>
+          <span style={{fontSize:12,color:G5}}>결제완료 <b style={{color:GR}}>{filtered.filter(b=>paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow").length}</b>건</span>
+        </div>
+        <button onClick={()=>{
+          const rows=filtered.map(b=>{
+            const isPaid=!!paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow";
+            const cust=CUSTS.find(c=>String(c.id)===b.cid);
+            const phone=cust?.phone||b.phone||"";
+            const amt=isPaid?(paidBks[b.id].amount||paidBks[b.id].paidAmt||0):b.price;
+            const method=isPaid?(paidBks[b.id].method||""):"";
+            const statusLabel=b.status==="cancel"?"취소":b.status==="noshow"?"노쇼":isPaid?"결제완료":"미결제";
+            const staffName=staff[b.sid]?.name||"담당자"+(b.sid+1);
+            return [b.date,b.time,b.name,phone,staffName,b.svc||"",amt,statusLabel,method];
+          });
+          downloadCSV("예약내역_"+TODAY+".csv",["날짜","시간","고객명","전화번호","담당자","시술명","금액","결제상태","결제수단"],rows);
+        }} style={{padding:"4px 11px",borderRadius:8,background:WH,border:"1px solid "+G2,color:G7,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+          엑셀 내보내기
+        </button>
       </div>
 
       <div style={{padding:"4px 13px"}}>
