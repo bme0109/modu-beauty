@@ -3812,6 +3812,10 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
             <div style={{marginTop:14,padding:"10px 13px",borderRadius:10,background:PS,fontSize:11,color:G5}}>
               적립된 보너스는 선불권 잔액에 자동 반영됩니다
             </div>
+            <button onClick={()=>setShowBonusSetting(false)}
+              style={{marginTop:16,width:"100%",padding:"13px",borderRadius:13,background:P,border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>
+              저장
+            </button>
           </div>
         </Sheet>
       )}
