@@ -3246,6 +3246,143 @@ function buildPrepaidFromPaidBks(paidBks) {
   return Object.values(map).filter(r=>r.total>0||r.history.length>0);
 }
 
+function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete }) {
+  const [range, setRange] = useState("1month");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [staffFilter, setStaffFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  function getRangeDates(r) {
+    const today = new Date(TODAY);
+    const end = TODAY;
+    if(r==="today")   return {start:TODAY, end};
+    if(r==="1week")   { const d=new Date(today); d.setDate(d.getDate()-7);   return {start:d.toISOString().slice(0,10),end}; }
+    if(r==="2weeks")  { const d=new Date(today); d.setDate(d.getDate()-14);  return {start:d.toISOString().slice(0,10),end}; }
+    if(r==="1month")  { const d=new Date(today); d.setMonth(d.getMonth()-1); return {start:d.toISOString().slice(0,10),end}; }
+    if(r==="3months") { const d=new Date(today); d.setMonth(d.getMonth()-3); return {start:d.toISOString().slice(0,10),end}; }
+    if(r==="6months") { const d=new Date(today); d.setMonth(d.getMonth()-6); return {start:d.toISOString().slice(0,10),end}; }
+    if(r==="all")     return {start:"2000-01-01",end:"2099-12-31"};
+    return {start:startDate||"2000-01-01",end:endDate||TODAY};
+  }
+
+  const {start,end} = getRangeDates(range);
+
+  let filtered = BKS.filter(b=>b.date>=start&&b.date<=end);
+  if(search.trim()){
+    const s=search.trim().toLowerCase();
+    filtered=filtered.filter(b=>{
+      const cust=CUSTS.find(c=>String(c.id)===b.cid);
+      const phone=(cust?.phone||b.phone||"").replace(/-/g,"");
+      return (b.name||"").toLowerCase().includes(s)||phone.includes(s.replace(/-/g,""));
+    });
+  }
+  if(statusFilter==="paid")   filtered=filtered.filter(b=>paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow");
+  else if(statusFilter==="unpaid")  filtered=filtered.filter(b=>!paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow");
+  else if(statusFilter==="cancel")  filtered=filtered.filter(b=>b.status==="cancel");
+  else if(statusFilter==="noshow")  filtered=filtered.filter(b=>b.status==="noshow");
+  if(staffFilter!=="all") filtered=filtered.filter(b=>b.sid===Number(staffFilter));
+  filtered=[...filtered].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
+
+  const RANGE_BTNS=[
+    {k:"today",l:"오늘"},{k:"1week",l:"1주"},{k:"2weeks",l:"2주"},
+    {k:"1month",l:"1개월"},{k:"3months",l:"3개월"},{k:"6months",l:"6개월"},
+    {k:"all",l:"전체"},{k:"custom",l:"직접지정"},
+  ];
+
+  return (
+    <div style={{paddingBottom:90}}>
+      <div style={{background:WH,padding:"10px 13px 10px",borderBottom:"1px solid "+G2,position:"sticky",top:50,zIndex:49}}>
+        <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:8,scrollbarWidth:"none"}}>
+          {RANGE_BTNS.map(({k,l})=>(
+            <button key={k} onClick={()=>setRange(k)}
+              style={{flexShrink:0,padding:"5px 11px",borderRadius:8,border:"1px solid "+(range===k?P:G2),background:range===k?P:WH,color:range===k?WH:G7,fontSize:12,fontWeight:range===k?700:400,cursor:"pointer"}}>{l}</button>
+          ))}
+        </div>
+        {range==="custom"&&(
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+            <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}
+              style={{flex:1,padding:"5px 8px",borderRadius:8,border:"1px solid "+G2,fontSize:12,color:DK}}/>
+            <span style={{color:G5,fontSize:12}}>~</span>
+            <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)}
+              style={{flex:1,padding:"5px 8px",borderRadius:8,border:"1px solid "+G2,fontSize:12,color:DK}}/>
+          </div>
+        )}
+        <div style={{display:"flex",gap:6}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="이름 또는 전화번호"
+            style={{flex:1,padding:"8px 11px",borderRadius:10,border:"1px solid "+G2,fontSize:12,color:DK,background:BG,outline:"none"}}/>
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}
+            style={{padding:"7px 5px",borderRadius:10,border:"1px solid "+G2,fontSize:11,color:G7,background:WH,flexShrink:0}}>
+            <option value="all">전체 상태</option>
+            <option value="paid">결제완료</option>
+            <option value="unpaid">미결제</option>
+            <option value="cancel">취소</option>
+            <option value="noshow">노쇼</option>
+          </select>
+          {staff.length>1&&(
+            <select value={staffFilter} onChange={e=>setStaffFilter(e.target.value)}
+              style={{padding:"7px 5px",borderRadius:10,border:"1px solid "+G2,fontSize:11,color:G7,background:WH,flexShrink:0}}>
+              <option value="all">전체</option>
+              {staff.map((s,i)=><option key={i} value={i}>{s.name||"담당자"+(i+1)}</option>)}
+            </select>
+          )}
+        </div>
+      </div>
+
+      <div style={{padding:"10px 13px 4px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:12,color:G5}}>총 <b style={{color:DK}}>{filtered.length}</b>건</span>
+        <span style={{fontSize:12,color:G5}}>결제완료 <b style={{color:GR}}>{filtered.filter(b=>paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow").length}</b>건</span>
+      </div>
+
+      <div style={{padding:"4px 13px"}}>
+        {filtered.length===0&&(
+          <div style={{textAlign:"center",padding:"48px 0",color:G5,fontSize:13}}>예약 내역이 없습니다</div>
+        )}
+        {filtered.map(b=>{
+          const isPaid=!!paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow";
+          const isCancel=b.status==="cancel";
+          const isNoshow=b.status==="noshow";
+          const cust=CUSTS.find(c=>String(c.id)===b.cid);
+          const phone=cust?.phone||b.phone||"";
+          const paidAmt=paidBks[b.id]?(paidBks[b.id].amount||paidBks[b.id].paidAmt||0):null;
+          const accentColor=isCancel?G5:isNoshow?RD:isPaid?GR:P;
+          const cardBg=isCancel?G3:isNoshow?"#FFF0F0":isPaid?GRL:WH;
+          return (
+            <div key={b.id} style={{background:cardBg,borderRadius:13,padding:"12px 13px",marginBottom:7,border:"1px solid "+(isCancel?G2:isNoshow?RD+"50":isPaid?GR+"50":G2)}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:3,flexWrap:"wrap"}}>
+                    <span style={{fontSize:12,fontWeight:700,color:accentColor}}>{b.date.slice(5).replace("-",".")} {b.time}</span>
+                    {staff[b.sid]&&<span style={{fontSize:10,color:G5,background:G2,borderRadius:5,padding:"1px 6px",flexShrink:0}}>{staff[b.sid].name||"담당자"+(b.sid+1)}</span>}
+                  </div>
+                  <div style={{fontSize:14,fontWeight:700,color:isCancel?G5:DK,textDecoration:isCancel?"line-through":"none"}}>
+                    {b.name}
+                    {phone&&<span style={{fontSize:11,color:G5,fontWeight:400,marginLeft:6}}>{phone}</span>}
+                  </div>
+                  {b.svc&&<div style={{fontSize:11,color:G5,marginTop:2}}>{b.svc}</div>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                  <span style={{fontSize:13,fontWeight:700,color:accentColor}}>
+                    {isPaid?paidAmt.toLocaleString():b.price.toLocaleString()}원
+                  </span>
+                  {isCancel&&<span style={{fontSize:10,fontWeight:700,color:G5,background:G2,borderRadius:5,padding:"2px 7px"}}>취소</span>}
+                  {isNoshow&&<span style={{fontSize:10,fontWeight:700,color:RD,background:RD+"20",borderRadius:5,padding:"2px 7px"}}>노쇼</span>}
+                  {isPaid&&<span style={{fontSize:10,fontWeight:700,color:GR,background:GRL,borderRadius:5,padding:"2px 7px"}}>결제완료</span>}
+                  {!isPaid&&!isCancel&&!isNoshow&&(
+                    <button onClick={()=>{if(onPay)onPay(b);}}
+                      style={{fontSize:10,fontWeight:700,color:WH,background:P,borderRadius:6,padding:"3px 9px",border:"none",cursor:"pointer"}}>결제</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaidUpdate }) {
   const data = prepaidData || [];
   const [activeTab, setActiveTab] = useState("prepaid");
@@ -4855,6 +4992,7 @@ export default function App({ session, onLogout, onChangePassword }) {
   ];
   const menus = [
     {l:"고객관리",a:()=>{setTab("customer");setMenu(false);}},
+    {l:"예약내역",a:()=>{setTab("booking_history");setMenu(false);}},
     {l:"회원권관리",a:()=>{setTab("prepaid");setMenu(false);}},
     {l:"매출분석",a:()=>{setTab("sales");setMenu(false);}},
     {l:"문자발송",a:()=>{setTab("sms");setMenu(false);}},
@@ -4899,6 +5037,7 @@ export default function App({ session, onLogout, onChangePassword }) {
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
+        {tab==="booking_history" && <BookingHistoryPage paidBks={paidBks} staff={staff} onPay={openPayment} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} onDelete={b=>{if(paidBks[b.id])cancelPayment(b.id);removeBooking(b.firestoreId);}}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
         {tab==="sms" && <SmsSendPage shopName={shopName} uid={uid}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking} naverUrl={naverUrl} onUpdateNaverUrl={u=>{setNaverUrl(u);localStorage.setItem("naverUrl",u);}}/>}
