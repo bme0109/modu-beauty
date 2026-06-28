@@ -2751,6 +2751,33 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
             </div>
           );
         })()}
+        {(()=>{
+          const todayContact=BKS.filter(b=>b.nextContact===TODAY);
+          if(!todayContact.length) return null;
+          return (
+            <div style={{background:"#EDF4FF",borderRadius:14,padding:"12px 14px",marginBottom:12,border:"1px solid "+P+"40"}}>
+              <div style={{fontSize:12,fontWeight:700,color:P,marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.36 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                오늘 재방문 연락 {todayContact.length}명
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {todayContact.map(b=>{
+                  const cust=CUSTS.find(c=>String(c.id)===b.cid);
+                  const phone=cust?.phone||b.phone||"";
+                  return (
+                    <div key={b.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div>
+                        <span style={{fontSize:13,fontWeight:700,color:DK}}>{b.name}</span>
+                        {b.svc&&<span style={{fontSize:11,color:G5,marginLeft:6}}>{b.svc}</span>}
+                      </div>
+                      {phone&&<a href={"sms:"+phone} style={{padding:"4px 10px",borderRadius:7,background:P,color:WH,fontSize:11,fontWeight:700,textDecoration:"none"}}>문자</a>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         <div style={{background:WH,borderRadius:18,padding:"15px",marginBottom:12,border:"1px solid "+G2}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
             <span style={{fontSize:15,fontWeight:800,color:DK}}>{_tyr}년 {_tmo}월</span>
@@ -3075,6 +3102,44 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
                 <span style={{fontSize:13,fontWeight:600,color:G5}}>미결제</span>
               )}
             </div>
+            {/* 재방문 연락일 */}
+            <div style={{display:"flex",padding:"11px 0",borderBottom:"1px solid "+G2,alignItems:"flex-start"}}>
+              <span style={{fontSize:12,color:G5,width:70,flexShrink:0,paddingTop:2}}>재방문 연락</span>
+              <div style={{flex:1}}>
+                {showBk.nextContact ? (
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <span style={{fontSize:13,fontWeight:700,color:P}}>{showBk.nextContact.slice(5).replace("-",".")} 연락 예정</span>
+                    <button onClick={()=>{
+                      if(onUpdate) onUpdate(showBk,{nextContact:null});
+                      const idx=BKS.findIndex(x=>x.id===showBk.id);
+                      if(idx>=0) BKS[idx]={...BKS[idx],nextContact:null};
+                      setShowBk(p=>({...p,nextContact:null}));
+                    }} style={{padding:"3px 8px",borderRadius:6,background:G2,border:"none",color:G5,fontSize:10,cursor:"pointer"}}>해제</button>
+                  </div>
+                ) : (
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                    {[[14,"2주 후"],[21,"3주 후"],[28,"4주 후"]].map(([days,label])=>(
+                      <button key={days} onClick={()=>{
+                        const nc=addDays(TODAY,days);
+                        if(onUpdate) onUpdate(showBk,{nextContact:nc});
+                        const idx=BKS.findIndex(x=>x.id===showBk.id);
+                        if(idx>=0) BKS[idx]={...BKS[idx],nextContact:nc};
+                        setShowBk(p=>({...p,nextContact:nc}));
+                      }} style={{padding:"5px 10px",borderRadius:8,background:PL,border:"1px solid "+PM,color:P,fontSize:11,fontWeight:700,cursor:"pointer"}}>{label}</button>
+                    ))}
+                    <input type="date" onChange={e=>{
+                      if(!e.target.value) return;
+                      const nc=e.target.value;
+                      if(onUpdate) onUpdate(showBk,{nextContact:nc});
+                      const idx=BKS.findIndex(x=>x.id===showBk.id);
+                      if(idx>=0) BKS[idx]={...BKS[idx],nextContact:nc};
+                      setShowBk(p=>({...p,nextContact:nc}));
+                      e.target.value="";
+                    }} style={{padding:"4px 6px",borderRadius:8,border:"1px solid "+G2,background:WH,color:G7,fontSize:11,cursor:"pointer"}}/>
+                  </div>
+                )}
+              </div>
+            </div>
             {!paidBks[showBk.id] && (
               <div style={{display:"flex",gap:9,marginTop:14}}>
                 <button onClick={()=>setDelConfirmBk(showBk)}
@@ -3150,6 +3215,11 @@ let PREPAID_DATA = [];
 function daysLeft(expiry) {
   if(!expiry) return null;
   return Math.ceil((new Date(expiry) - new Date(TODAY)) / (1000*60*60*24));
+}
+function addDays(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0,10);
 }
 function buildPrepaidFromPaidBks(paidBks) {
   const map = {};
