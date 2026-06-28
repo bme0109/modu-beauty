@@ -3268,7 +3268,7 @@ function buildPrepaidFromPaidBks(paidBks) {
   return Object.values(map).filter(r=>r.total>0||r.history.length>0);
 }
 
-function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete }) {
+function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete, onDeleteAll }) {
   const [range, setRange] = useState("1month");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -3356,7 +3356,14 @@ function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete }) {
           <span style={{fontSize:12,color:G5}}>총 <b style={{color:DK}}>{filtered.length}</b>건</span>
           <span style={{fontSize:12,color:G5}}>결제완료 <b style={{color:GR}}>{filtered.filter(b=>paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow").length}</b>건</span>
         </div>
-        <button onClick={()=>{
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{
+            if(!window.confirm("예약 전체("+BKS.length+"건)를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) return;
+            if(onDeleteAll) onDeleteAll();
+          }} style={{padding:"4px 11px",borderRadius:8,background:"#FFF0F0",border:"1px solid "+RD,color:RD,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+            전체 삭제
+          </button>
+          <button onClick={()=>{
           const rows=filtered.map(b=>{
             const isPaid=!!paidBks[b.id]&&b.status!=="cancel"&&b.status!=="noshow";
             const cust=CUSTS.find(c=>String(c.id)===b.cid);
@@ -3368,9 +3375,10 @@ function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete }) {
             return [b.date,b.time,b.name,phone,staffName,b.svc||"",amt,statusLabel,method];
           });
           downloadCSV("예약내역_"+TODAY+".csv",["날짜","시간","고객명","전화번호","담당자","시술명","금액","결제상태","결제수단"],rows);
-        }} style={{padding:"4px 11px",borderRadius:8,background:WH,border:"1px solid "+G2,color:G7,fontSize:11,fontWeight:700,cursor:"pointer"}}>
-          엑셀 내보내기
-        </button>
+          }} style={{padding:"4px 11px",borderRadius:8,background:WH,border:"1px solid "+G2,color:G7,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+            엑셀 내보내기
+          </button>
+        </div>
       </div>
 
       <div style={{padding:"4px 13px"}}>
@@ -5079,7 +5087,7 @@ export default function App({ session, onLogout, onChangePassword }) {
         {tab==="calendar" && <CalPage onDate={handleDate}/>}
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
-        {tab==="booking_history" && <BookingHistoryPage paidBks={paidBks} staff={staff} onPay={openPayment} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} onDelete={b=>{if(paidBks[b.id])cancelPayment(b.id);removeBooking(b.firestoreId);}}/>}
+        {tab==="booking_history" && <BookingHistoryPage paidBks={paidBks} staff={staff} onPay={openPayment} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} onDelete={b=>{if(paidBks[b.id])cancelPayment(b.id);removeBooking(b.firestoreId);}} onDeleteAll={async()=>{const all=[...BKS];for(const b of all){if(paidBks[b.id])cancelPayment(b.id);await removeBooking(b.firestoreId);}BKS=[];setPaidBks({});}}/>}
         {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
         {tab==="sms" && <SmsSendPage shopName={shopName} uid={uid}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking} naverUrl={naverUrl} onUpdateNaverUrl={u=>{setNaverUrl(u);localStorage.setItem("naverUrl",u);}}/>}
