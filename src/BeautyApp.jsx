@@ -2166,11 +2166,13 @@ function CustPage({ onSaveNew, paidBks, prepaidData, onDeleteBooking, onDeleteCu
                 {sel.source&&<div style={{fontSize:11,color:P,fontWeight:600,marginTop:2}}>{sel.source} 유입</div>}
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:9}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginBottom:9}}>
               {(()=>{
                 const prepaidRec=(prepaidData||[]).find(d=>d.custName===sel.name);
                 const prepaidBal=prepaidRec?(prepaidRec.balance||0):0;
-                return [{l:"방문횟수",v:sel.visits+"회"},{l:"누적매출",v:(sel.revenue/10000).toFixed(0)+"만원"},{l:"선불권",v:prepaidBal.toLocaleString()+"원"}];
+                const sessRec=SESSION_DATA.filter(d=>d.custName===sel.name&&(d.total-d.used)>0);
+                const sessRemain=sessRec.reduce((s,d)=>s+(d.total-d.used),0);
+                return [{l:"방문횟수",v:sel.visits+"회"},{l:"누적매출",v:(sel.revenue/10000).toFixed(0)+"만원"},{l:"선불권",v:prepaidBal.toLocaleString()+"원"},{l:"횟수권",v:sessRemain>0?sessRemain+"회 남음":"-"}];
               })().map((s,i) => (
                 <div key={i} style={{background:PS,borderRadius:10,padding:"8px",textAlign:"center"}}>
                   <div style={{fontSize:9,color:G5,marginBottom:3}}>{s.l}</div>
@@ -2783,6 +2785,25 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
           );
         })()}
         {(()=>{
+          const expSess=SESSION_DATA.filter(d=>{const r=d.total-d.used;if(r<=0)return false;const dl=d.expiry?daysLeft(d.expiry):null;return dl!==null&&dl<=30&&dl>0;}).sort((a,b)=>daysLeft(a.expiry)-daysLeft(b.expiry));
+          if(!expSess.length) return null;
+          return (
+            <div style={{background:"#F0F7FF",borderRadius:14,padding:"12px 14px",marginBottom:12,border:"1px solid "+P+"40"}}>
+              <div style={{fontSize:12,fontWeight:700,color:P,marginBottom:6,display:"flex",alignItems:"center",gap:5}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                횟수권 만료 임박 {expSess.length}명
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {expSess.map(d=>{const dl=daysLeft(d.expiry);return(
+                  <span key={d.id} style={{fontSize:11,fontWeight:700,color:dl<=7?RD:P,background:dl<=7?"#FFE0E0":PL,borderRadius:6,padding:"3px 9px"}}>
+                    {d.custName} D-{dl} ({d.total-d.used}회)
+                  </span>
+                );})}
+              </div>
+            </div>
+          );
+        })()}
+        {(()=>{
           const todayContact=BKS.filter(b=>b.nextContact===TODAY);
           if(!todayContact.length) return null;
           return (
@@ -3243,6 +3264,7 @@ function HomePage({ onDate, staff, onPay, paidBks, onCancelPay, slotUnit=30, onD
   );
 }
 let PREPAID_DATA = [];
+let SESSION_DATA = [];
 function daysLeft(expiry) {
   if(!expiry) return null;
   return Math.ceil((new Date(expiry) - new Date(TODAY)) / (1000*60*60*24));
@@ -3448,7 +3470,208 @@ function BookingHistoryPage({ paidBks, staff, onPay, onUpdate, onDelete, onDelet
   );
 }
 
-function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaidUpdate }) {
+function SessionTab({ sessionData, onUpdate }) {
+  const [sel, setSel] = useState(null);
+  const [showNew, setShowNew] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [showCustSearch, setShowCustSearch] = useState(false);
+  const [newForm, setNewForm] = useState({custName:"",voucherName:"",total:"10",price:"",purchaseDate:TODAY,expiry:""});
+
+  const allData = sessionData||[];
+  const filtered = allData.filter(d=>d.custName.includes(searchQ));
+
+  function addVoucher() {
+    if(!newForm.custName.trim()||!newForm.voucherName.trim()||!newForm.total) return;
+    const total=Number(newForm.total)||0;
+    const cust=CUSTS.find(c=>c.name===newForm.custName);
+    const v={id:Date.now(),custName:newForm.custName,custId:cust?String(cust.id):"",voucherName:newForm.voucherName,total,used:0,purchaseDate:newForm.purchaseDate||TODAY,expiry:newForm.expiry||"",price:Number(newForm.price)||0,status:"active",history:[]};
+    onUpdate([...allData,v]);
+    setShowNew(false);
+    setNewForm({custName:"",voucherName:"",total:"10",price:"",purchaseDate:TODAY,expiry:""});
+    setSel(v);
+  }
+
+  function deduct(v) {
+    if(v.used>=v.total) return;
+    const newUsed=v.used+1;
+    const remaining=v.total-newUsed;
+    const updated={...v,used:newUsed,status:remaining===0?"completed":"active",history:[...v.history,{date:TODAY,remaining}]};
+    onUpdate(allData.map(d=>d.id===v.id?updated:d));
+    setSel(updated);
+  }
+
+  function undoDeduct(v) {
+    if(!v.history.length) return;
+    const newUsed=Math.max(v.used-1,0);
+    const updated={...v,used:newUsed,status:"active",history:v.history.slice(0,-1)};
+    onUpdate(allData.map(d=>d.id===v.id?updated:d));
+    setSel(updated);
+  }
+
+  function deleteVoucher(v) {
+    if(!window.confirm(`"${v.voucherName}" 횟수권을 삭제하시겠습니까?`)) return;
+    onUpdate(allData.filter(d=>d.id!==v.id));
+    setSel(null);
+  }
+
+  if(sel) {
+    const remaining=sel.total-sel.used;
+    const dl=sel.expiry?daysLeft(sel.expiry):null;
+    const isExpired=dl!==null&&dl<=0;
+    const isDone=remaining<=0;
+    return (
+      <div style={{paddingBottom:100}}>
+        <div style={{background:WH,padding:"12px 16px",borderBottom:"1px solid "+G2,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:98,zIndex:10}}>
+          <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:P,fontSize:13,fontWeight:600}}>‹ 목록</button>
+          <button onClick={()=>deleteVoucher(sel)} style={{background:"none",border:"none",cursor:"pointer",color:RD,fontSize:12,fontWeight:600}}>삭제</button>
+        </div>
+        <div style={{padding:"16px"}}>
+          <div style={{background:isDone||isExpired?G3:P,borderRadius:20,padding:"28px 20px",marginBottom:14,textAlign:"center",boxShadow:isDone||isExpired?"none":"0 6px 20px "+P+"40"}}>
+            <div style={{fontSize:13,color:isDone||isExpired?G5:"rgba(255,255,255,0.75)",marginBottom:2}}>{sel.custName}</div>
+            <div style={{fontSize:14,fontWeight:700,color:isDone||isExpired?G7:WH,marginBottom:18}}>{sel.voucherName}</div>
+            <div style={{fontSize:72,fontWeight:900,color:isDone||isExpired?G5:WH,lineHeight:1}}>{remaining}</div>
+            <div style={{fontSize:14,color:isDone||isExpired?G5:"rgba(255,255,255,0.75)",marginTop:6}}>/ {sel.total}회 남음</div>
+            {isExpired&&<div style={{fontSize:11,fontWeight:700,color:RD,background:WH,borderRadius:8,padding:"3px 10px",marginTop:10,display:"inline-block"}}>기간 만료</div>}
+            {isDone&&!isExpired&&<div style={{fontSize:12,fontWeight:700,color:G5,marginTop:8}}>사용 완료</div>}
+          </div>
+          <div style={{background:WH,borderRadius:14,padding:"14px",border:"1px solid "+G2,marginBottom:12}}>
+            {[["구매일",sel.purchaseDate],["유효기간",sel.expiry?(sel.expiry+(dl!==null?dl<=0?" (만료)":" (D-"+dl+")":"")):"없음"],["구매금액",sel.price?sel.price.toLocaleString()+"원":"-"],["상태",isDone?"사용완료":isExpired?"기간만료":"사용 중"]].map(([k,v])=>(
+              <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid "+G2}}>
+                <span style={{fontSize:12,color:G5}}>{k}</span>
+                <span style={{fontSize:12,fontWeight:600,color:DK}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          {!isDone&&!isExpired&&(
+            <button onClick={()=>deduct(sel)} style={{width:"100%",padding:"15px",borderRadius:14,background:P,border:"none",color:WH,fontSize:15,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px "+P+"44",marginBottom:10}}>
+              1회 차감 &nbsp;({remaining} → {remaining-1}회)
+            </button>
+          )}
+          {sel.history.length>0&&(
+            <button onClick={()=>undoDeduct(sel)} style={{width:"100%",padding:"11px",borderRadius:12,background:WH,border:"1.5px solid "+G2,color:G5,fontSize:12,fontWeight:600,cursor:"pointer",marginBottom:14}}>
+              마지막 차감 되돌리기
+            </button>
+          )}
+          {sel.history.length>0&&(
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:DK,marginBottom:8}}>사용 내역</div>
+              {[...sel.history].reverse().map((h,i)=>(
+                <div key={i} style={{background:WH,borderRadius:10,padding:"10px 12px",marginBottom:6,border:"1px solid "+G2,display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:12,color:G7}}>{h.date}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:P}}>차감 후 잔여 {h.remaining}회</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{paddingBottom:100}}>
+      <div style={{padding:"10px 14px",background:WH,borderBottom:"1px solid "+G2,position:"sticky",top:98,zIndex:10}}>
+        <div style={{display:"flex",gap:8}}>
+          <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="고객명 검색"
+            style={{flex:1,padding:"8px 11px",borderRadius:10,border:"1px solid "+G2,fontSize:12,outline:"none",color:DK,background:BG}}/>
+          <button onClick={()=>setShowNew(true)} style={{padding:"8px 14px",borderRadius:10,background:P,border:"none",color:WH,fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>+ 등록</button>
+        </div>
+      </div>
+      <div style={{padding:"12px 14px 4px",display:"flex",gap:10}}>
+        <div style={{flex:1,background:P,borderRadius:14,padding:"12px",boxShadow:"0 4px 12px "+P+"40"}}>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",marginBottom:3}}>사용 중</div>
+          <div style={{fontSize:22,fontWeight:800,color:WH}}>{allData.filter(d=>d.status==="active"&&(d.total-d.used)>0).length}명</div>
+        </div>
+        <div style={{flex:1,background:WH,borderRadius:14,padding:"12px",border:"1px solid "+G2}}>
+          <div style={{fontSize:10,color:G5,marginBottom:3}}>사용 완료</div>
+          <div style={{fontSize:22,fontWeight:800,color:DK}}>{allData.filter(d=>d.status==="completed"||(d.total-d.used)<=0).length}명</div>
+        </div>
+      </div>
+      <div style={{padding:"8px 14px"}}>
+        {filtered.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:G5,fontSize:13}}>{searchQ?"검색 결과가 없습니다":"등록된 횟수권이 없습니다"}</div>}
+        {filtered.map(d=>{
+          const remaining=d.total-d.used;
+          const dl=d.expiry?daysLeft(d.expiry):null;
+          const isDone=remaining<=0;
+          const isExpired=dl!==null&&dl<=0;
+          const warn=!isDone&&!isExpired&&dl!==null&&dl<=30;
+          return (
+            <div key={d.id} onClick={()=>setSel(d)} style={{background:WH,borderRadius:14,padding:"14px",marginBottom:8,border:"1px solid "+(isExpired?RD+"50":warn?"#FFD93D":G2),cursor:"pointer"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:isDone?G5:DK}}>{d.custName}</div>
+                  <div style={{fontSize:11,color:G5,marginTop:2}}>{d.voucherName}</div>
+                  {d.expiry&&<div style={{fontSize:10,color:warn||isExpired?RD:G5,marginTop:3}}>{isExpired?"만료됨":dl!==null&&dl<=30?"D-"+dl+" 만료 임박":"~"+d.expiry.slice(5).replace("-",".")}</div>}
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:32,fontWeight:900,color:isDone?G5:P,lineHeight:1}}>{remaining}</div>
+                  <div style={{fontSize:10,color:G5}}>/ {d.total}회</div>
+                  {isDone&&<div style={{fontSize:10,fontWeight:700,color:G5,marginTop:2}}>완료</div>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {showNew&&(
+        <Sheet onClose={()=>setShowNew(false)} maxH="92vh">
+          <SheetHandle title="횟수권 등록" onClose={()=>setShowNew(false)}/>
+          <div style={{flex:1,overflowY:"auto",padding:"0 18px 40px"}}>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>고객명 *</div>
+              <div style={{position:"relative"}}>
+                <input value={newForm.custName} onChange={e=>{setNewForm(p=>({...p,custName:e.target.value}));setShowCustSearch(true);}}
+                  placeholder="고객명 검색" style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+                {showCustSearch&&newForm.custName&&(
+                  <div style={{position:"absolute",top:"100%",left:0,right:0,background:WH,border:"1px solid "+G2,borderRadius:10,zIndex:100,maxHeight:150,overflowY:"auto",boxShadow:"0 4px 12px #0002"}}>
+                    {CUSTS.filter(c=>c.name.includes(newForm.custName)).slice(0,6).map(c=>(
+                      <div key={c.id} onClick={()=>{setNewForm(p=>({...p,custName:c.name}));setShowCustSearch(false);}}
+                        style={{padding:"10px 14px",fontSize:13,cursor:"pointer",borderBottom:"1px solid "+G2}}>
+                        {c.name}<span style={{fontSize:11,color:G5,marginLeft:6}}>{c.phone}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>횟수권 이름 *</div>
+              <input value={newForm.voucherName} onChange={e=>setNewForm(p=>({...p,voucherName:e.target.value}))} placeholder="예: 젤 네일 10회권"
+                style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <div>
+                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>총 횟수 *</div>
+                <input type="number" min="1" value={newForm.total} onChange={e=>setNewForm(p=>({...p,total:e.target.value}))}
+                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>구매금액</div>
+                <input type="number" value={newForm.price} onChange={e=>setNewForm(p=>({...p,price:e.target.value}))} placeholder="0"
+                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:13,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+              <div>
+                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>구매일</div>
+                <input type="date" value={newForm.purchaseDate} onChange={e=>setNewForm(p=>({...p,purchaseDate:e.target.value}))}
+                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:G5,fontWeight:600,marginBottom:5}}>유효기간</div>
+                <input type="date" value={newForm.expiry} onChange={e=>setNewForm(p=>({...p,expiry:e.target.value}))}
+                  style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+G2,fontSize:12,outline:"none",color:DK,background:WH,boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <button onClick={addVoucher} style={{width:"100%",padding:"13px",borderRadius:13,background:P,border:"none",color:WH,fontSize:14,fontWeight:700,cursor:"pointer"}}>등록 완료</button>
+          </div>
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaidUpdate, sessionData, onSessionUpdate }) {
   const data = prepaidData || [];
   const [activeTab, setActiveTab] = useState("prepaid");
   const [sel, setSel] = useState(null);
@@ -3645,11 +3868,7 @@ function PrepaidPage({ onBack, bonusRates, onUpdateBonus, prepaidData, onPrepaid
       </div>
 
       {activeTab==="session" ? (
-        <div style={{padding:"40px 20px",textAlign:"center",color:G5}}>
-          <div style={{fontSize:40,marginBottom:16}}>🎟</div>
-          <div style={{fontSize:15,fontWeight:700,color:DK,marginBottom:8}}>횟수권 관리</div>
-          <div style={{fontSize:13,lineHeight:1.8}}>횟수권 기능은 준비 중입니다.</div>
-        </div>
+        <SessionTab sessionData={sessionData} onUpdate={onSessionUpdate}/>
       ) : (
       <div style={{padding:"14px 16px 8px"}}>
         {/* 요약 카드 */}
@@ -4804,11 +5023,20 @@ export default function App({ session, onLogout, onChangePassword }) {
     if(!uid0) return [];
     try { return JSON.parse(localStorage.getItem('prepaid_'+uid0)||'[]'); } catch { return []; }
   });
-  // prepaidData 변경 시 localStorage + 전역 PREPAID_DATA 동기화
   useEffect(() => {
     PREPAID_DATA = prepaidData;
     if(uid) localStorage.setItem('prepaid_'+uid, JSON.stringify(prepaidData));
   }, [prepaidData, uid]);
+  // 횟수권 데이터
+  const [sessionData, setSessionData] = useState(() => {
+    const uid0 = session?.uid;
+    if(!uid0) return [];
+    try { return JSON.parse(localStorage.getItem('sessions_'+uid0)||'[]'); } catch { return []; }
+  });
+  useEffect(() => {
+    SESSION_DATA = sessionData;
+    if(uid) localStorage.setItem('sessions_'+uid, JSON.stringify(sessionData));
+  }, [sessionData, uid]);
 
   // 다크모드 퍼시스트 + 스태프 배경 동기화 + body 배경
   useEffect(() => {
@@ -5107,7 +5335,7 @@ export default function App({ session, onLogout, onChangePassword }) {
         {tab==="customer" && <CustPage onSaveNew={saveCustomer} paidBks={paidBks} prepaidData={prepaidData} onDeleteBooking={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeleteCust={deleteCustomer}/>}
         {tab==="sales" && <SalesPage paidBks={paidBks} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;});}}/>}
         {tab==="booking_history" && <BookingHistoryPage paidBks={paidBks} staff={staff} onPay={openPayment} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}} onDelete={b=>{if(paidBks[b.id])cancelPayment(b.id);removeBooking(b.firestoreId);}} onDeleteAll={async()=>{const all=[...BKS];for(const b of all){if(paidBks[b.id])cancelPayment(b.id);await removeBooking(b.firestoreId);}BKS=[];setPaidBks({});}}/>}
-        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData}/>}
+        {tab==="prepaid" && <PrepaidPage onBack={() => setTab("home")} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} prepaidData={prepaidData} onPrepaidUpdate={setPrepaidData} sessionData={sessionData} onSessionUpdate={setSessionData}/>}
         {tab==="sms" && <SmsSendPage shopName={shopName} uid={uid}/>}
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking} naverUrl={naverUrl} onUpdateNaverUrl={u=>{setNaverUrl(u);localStorage.setItem("naverUrl",u);}}/>}
       </div>
