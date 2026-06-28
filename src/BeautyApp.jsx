@@ -34,6 +34,16 @@ function applyTheme(dark) {
   DK=t.DK; WH=t.WH; RD=t.RD; GR=t.GR; GRL=t.GRL; OB=t.OB; OS=t.OS; OR=t.OR; ORL=t.ORL;
 }
 
+function useIsDesktop() {
+  const [v, setV] = useState(() => window.innerWidth >= 768);
+  useEffect(() => {
+    const fn = () => setV(window.innerWidth >= 768);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return v;
+}
+
 const _todayD = new Date();
 const TODAY = _todayD.getFullYear() + "-" + String(_todayD.getMonth()+1).padStart(2,"0") + "-" + String(_todayD.getDate()).padStart(2,"0");
 const SLOT_H = 26;
@@ -5625,6 +5635,19 @@ export default function App({ session, onLogout, onChangePassword }) {
   function openModal(time,sid,date) { setModal({time:time||null,sid:sid!==undefined?sid:null,date:date||null}); }
   function addStaff() { setStaff(p => [...p,{id:p.length,name:"담당자"+(p.length+1),bg:p.length%2===0?PS:WH}]); }
 
+  const isDesktop = useIsDesktop();
+  const [hovSidebar, setHovSidebar] = useState(null);
+  const PAGE_TITLES = {home:"홈",timetable:"타임테이블",calendar:"캘린더",customer:"고객관리",booking_history:"예약내역",prepaid:"회원권관리",sales:"매출분석",expense:"지출관리",sms:"문자발송",settings:"설정"};
+  const SIDEBAR_ITEMS = [
+    {id:"home",           l:"홈",        ac:"#EDE9FF", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
+    {id:"calendar",       l:"캘린더",    ac:"#C4E4F8", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
+    {id:"customer",       l:"고객관리",  ac:"#C8EDE6", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
+    {id:"booking_history",l:"예약내역",  ac:"#FFD8CC", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>},
+    {id:"prepaid",        l:"회원권관리",ac:"#FFD6E4", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>},
+    {id:"sales",          l:"매출분석",  ac:"#FFF3C2", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>},
+    {id:"expense",        l:"지출관리",  ac:"#FFE8D0", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>},
+    {id:"sms",            l:"문자발송",  ac:"#DCF0FF", ic:<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>},
+  ];
   const NAV_L = [
     {id:"home",l:"홈",ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
     {id:"calendar",l:"캘린더",ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
@@ -5659,21 +5682,96 @@ export default function App({ session, onLogout, onChangePassword }) {
   );
 
   return (
-    <div style={{fontFamily:"'Noto Sans KR','Apple SD Gothic Neo',sans-serif",background:BG,minHeight:"100vh",width:"100%",maxWidth:430,margin:"0 auto",paddingBottom:72,overflowX:"hidden",boxSizing:"border-box"}}>
-      {tab!=="timetable" && (
-        <div style={{position:"sticky",top:0,zIndex:50,background:WH,borderBottom:"1px solid "+G2,padding:"13px 18px 11px"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative"}}>
-            <button onClick={() => setMenu(true)} style={{background:"none",border:"none",cursor:"pointer",padding:3,display:"flex",flexDirection:"column",gap:4}}>
-              <div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:13,height:2,background:DK,borderRadius:2}}/>
-            </button>
-            <span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:P,letterSpacing:-0.5,whiteSpace:"nowrap",pointerEvents:"none"}}>{shopName}</span>
-            {naverUrl ? (
-              <a href={naverUrl} target="_blank" rel="noreferrer"
-                style={{padding:"4px 9px",borderRadius:8,background:"#E8F9EE",border:"1px solid #03C75A",color:"#009444",fontSize:11,fontWeight:800,textDecoration:"none",lineHeight:1.4}}>N</a>
-            ) : <div style={{width:26}}/>}
+    <div style={{fontFamily:"'Noto Sans KR','Apple SD Gothic Neo',sans-serif",background:BG,minHeight:"100vh"}}>
+
+      {/* ── PC 사이드바 ── */}
+      {isDesktop && (
+        <aside style={{width:224,height:"100vh",position:"fixed",top:0,left:0,background:WH,borderRight:"1px solid "+G2,display:"flex",flexDirection:"column",zIndex:100,boxShadow:"0 0 40px rgba(124,107,196,0.07)",overflowY:"auto"}}>
+          {/* 로고 */}
+          <div style={{padding:"26px 20px 18px",borderBottom:"1px solid "+G2,flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:11}}>
+              <div style={{width:40,height:40,borderRadius:14,background:"linear-gradient(135deg,"+P+","+PM+")",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px "+P+"40"}}>
+                <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><rect x="16" y="2" width="4" height="15" rx="2" fill="white"/><ellipse cx="18" cy="19" rx="5.5" ry="3.5" fill="white"/><ellipse cx="18" cy="22" rx="4" ry="2.2" fill="rgba(255,255,255,0.6)"/></svg>
+              </div>
+              <div>
+                <div style={{fontFamily:"Georgia,serif",fontSize:16,fontWeight:700,color:P}}>{shopName}</div>
+                <div style={{fontSize:10,color:G5,marginTop:2}}>뷰티샵 CRM</div>
+              </div>
+            </div>
           </div>
-        </div>
+          {/* 메뉴 */}
+          <nav style={{flex:1,padding:"12px 10px",overflowY:"auto"}}>
+            {SIDEBAR_ITEMS.map(item=>{
+              const on=tab===item.id||(tab==="timetable"&&item.id==="home");
+              const hov=hovSidebar===item.id&&!on;
+              return (
+                <button key={item.id} onClick={()=>setTab(item.id)} onMouseEnter={()=>setHovSidebar(item.id)} onMouseLeave={()=>setHovSidebar(null)}
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:11,padding:"9px 11px",borderRadius:12,border:"none",background:on?P:hov?item.ac:"transparent",color:on?WH:G7,cursor:"pointer",marginBottom:2,textAlign:"left"}}>
+                  <div style={{width:33,height:33,borderRadius:10,flexShrink:0,background:on?"rgba(255,255,255,0.2)":item.ac,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {React.cloneElement(item.ic,{stroke:on?WH:G5})}
+                  </div>
+                  <span style={{fontSize:12.5,fontWeight:on?700:500,letterSpacing:-0.2}}>{item.l}</span>
+                  {on&&<div style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:"rgba(255,255,255,0.75)",flexShrink:0}}/>}
+                </button>
+              );
+            })}
+          </nav>
+          {/* 하단 버튼 */}
+          <div style={{padding:"10px",borderTop:"1px solid "+G2,flexShrink:0}}>
+            {naverUrl&&<a href={naverUrl} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:11,padding:"8px 11px",borderRadius:12,textDecoration:"none",marginBottom:4,background:"#E8F9EE"}}><div style={{width:33,height:33,borderRadius:10,background:"#03C75A15",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1px solid #03C75A25"}}><span style={{fontSize:14,fontWeight:900,color:"#009444"}}>N</span></div><span style={{fontSize:12,fontWeight:700,color:"#009444"}}>네이버 예약</span></a>}
+            <button onClick={()=>setTab("settings")} onMouseEnter={()=>setHovSidebar("__set")} onMouseLeave={()=>setHovSidebar(null)}
+              style={{width:"100%",display:"flex",alignItems:"center",gap:11,padding:"8px 11px",borderRadius:12,border:"none",marginBottom:2,background:tab==="settings"?P:hovSidebar==="__set"?G2:"transparent",color:tab==="settings"?WH:G7,cursor:"pointer",textAlign:"left"}}>
+              <div style={{width:33,height:33,borderRadius:10,flexShrink:0,background:tab==="settings"?"rgba(255,255,255,0.18)":G2,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tab==="settings"?WH:G5} strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </div>
+              <span style={{fontSize:12.5,fontWeight:tab==="settings"?700:500}}>설정</span>
+            </button>
+            <button onClick={()=>setIsDark(d=>!d)} onMouseEnter={()=>setHovSidebar("__dk")} onMouseLeave={()=>setHovSidebar(null)}
+              style={{width:"100%",display:"flex",alignItems:"center",gap:11,padding:"8px 11px",borderRadius:12,border:"none",marginBottom:2,background:hovSidebar==="__dk"?G2:"transparent",color:G7,cursor:"pointer",textAlign:"left"}}>
+              <div style={{width:33,height:33,borderRadius:10,flexShrink:0,background:G2,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {isDark?<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={DK} strokeWidth="1.8"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G5} strokeWidth="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>}
+              </div>
+              <span style={{fontSize:12.5,fontWeight:500}}>{isDark?"라이트 모드":"다크 모드"}</span>
+            </button>
+            {onLogout&&<button onClick={()=>{if(onLogout)onLogout();}} onMouseEnter={()=>setHovSidebar("__out")} onMouseLeave={()=>setHovSidebar(null)}
+              style={{width:"100%",display:"flex",alignItems:"center",gap:11,padding:"8px 11px",borderRadius:12,border:"none",background:hovSidebar==="__out"?"#FFF0F0":"transparent",color:RD,cursor:"pointer",textAlign:"left"}}>
+              <div style={{width:33,height:33,borderRadius:10,flexShrink:0,background:"#FFF0F0",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={RD} strokeWidth="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </div>
+              <span style={{fontSize:12.5,fontWeight:600}}>로그아웃</span>
+            </button>}
+          </div>
+        </aside>
       )}
+
+      {/* ── 메인 컨텐츠 래퍼 ── */}
+      <div style={isDesktop?{marginLeft:224,minHeight:"100vh",overflowX:"hidden",background:BG}:{width:"100%",maxWidth:430,margin:"0 auto",paddingBottom:72,overflowX:"hidden",boxSizing:"border-box"}}>
+
+        {/* PC 상단 헤더바 */}
+        {isDesktop && (
+          <div style={{background:WH,borderBottom:"1px solid "+G2,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,boxShadow:"0 1px 12px rgba(124,107,196,0.06)"}}>
+            <div style={{fontSize:19,fontWeight:800,color:DK,letterSpacing:-0.5}}>{PAGE_TITLES[tab]||shopName}</div>
+            <button onClick={()=>openModal(null,null)} style={{display:"flex",alignItems:"center",gap:7,padding:"10px 22px",borderRadius:12,background:P,border:"none",color:WH,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 12px "+P+"40"}}>
+              <span style={{fontSize:18,lineHeight:1}}>+</span> 새 예약
+            </button>
+          </div>
+        )}
+
+        {/* 모바일 상단 헤더 */}
+        {!isDesktop && tab!=="timetable" && (
+          <div style={{position:"sticky",top:0,zIndex:50,background:WH,borderBottom:"1px solid "+G2,padding:"13px 18px 11px"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative"}}>
+              <button onClick={() => setMenu(true)} style={{background:"none",border:"none",cursor:"pointer",padding:3,display:"flex",flexDirection:"column",gap:4}}>
+                <div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:20,height:2,background:DK,borderRadius:2}}/><div style={{width:13,height:2,background:DK,borderRadius:2}}/>
+              </button>
+              <span style={{position:"absolute",left:"50%",transform:"translateX(-50%)",fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:P,letterSpacing:-0.5,whiteSpace:"nowrap",pointerEvents:"none"}}>{shopName}</span>
+              {naverUrl ? (
+                <a href={naverUrl} target="_blank" rel="noreferrer"
+                  style={{padding:"4px 9px",borderRadius:8,background:"#E8F9EE",border:"1px solid #03C75A",color:"#009444",fontSize:11,fontWeight:800,textDecoration:"none",lineHeight:1.4}}>N</a>
+              ) : <div style={{width:26}}/>}
+            </div>
+          </div>
+        )}
 
       <div>
         {tab==="home" && <HomePage onDate={handleDate} staff={staff} onPay={openPayment} paidBks={paidBks} onCancelPay={requestCancelPay} slotUnit={slotUnit} onDelete={b=>{ if(paidBks[b.id]) cancelPayment(b.id); removeBooking(b.firestoreId); }} onDeletePaid={bkId=>{setPaidBks(p=>{const n={...p};delete n[bkId];return n;}); }} onUpdate={(b,data)=>{updateBooking(b.firestoreId,data);const idx=BKS.findIndex(x=>x.id===b.id);if(idx>=0)BKS[idx]={...BKS[idx],...data};}}/>}
@@ -5688,8 +5786,9 @@ export default function App({ session, onLogout, onChangePassword }) {
         {tab==="settings" && <SettingsPage staff={staff} onUpdateStaff={s=>setStaff(s)} initialSub={settingsSub} onClearSub={() => setSettingsSub(null)} bonusRates={bonusRates} onUpdateBonus={r=>{setBonusRates(r);localStorage.setItem("bonusRates",JSON.stringify(r));}} slotUnit={slotUnit} onUpdateSlotUnit={u=>setSlotUnit(u)} shopName={shopName} onUpdateShopName={n=>{setShopName(n);localStorage.setItem("shopName",n);}} onImportCustomers={saveCustomer} onImportBookings={addBooking} naverUrl={naverUrl} onUpdateNaverUrl={u=>{setNaverUrl(u);localStorage.setItem("naverUrl",u);}}/>}
       </div>
 
-      {/* 하단 탭 */}
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:430,maxWidth:"100%",background:WH,borderTop:"1px solid "+G2,display:"flex",alignItems:"center",padding:"7px 0 18px",zIndex:99}}>
+      {/* 하단 탭 (모바일 전용) */}
+      {!isDesktop && (
+        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:430,maxWidth:"100%",background:WH,borderTop:"1px solid "+G2,display:"flex",alignItems:"center",padding:"7px 0 18px",zIndex:99}}>
         {NAV_L.map(it => {
           const on=tab===it.id||(tab==="timetable"&&it.id==="home");
           return <button key={it.id} onClick={() => setTab(it.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",border:"none",cursor:"pointer",padding:"3px 0",color:on?P:G5}}>
@@ -5710,10 +5809,11 @@ export default function App({ session, onLogout, onChangePassword }) {
             {on&&<div style={{width:4,height:4,borderRadius:"50%",background:P}}/>}
           </button>;
         })}
-      </div>
+        </div>
+      )}
 
-      {/* 사이드 메뉴 */}
-      {menuOpen && (
+      {/* 사이드 메뉴 (모바일 전용) */}
+      {!isDesktop && menuOpen && (
         <>
           <div onClick={() => setMenu(false)} style={{position:"fixed",inset:0,background:"rgba(20,16,50,0.3)",zIndex:200}}/>
           <div style={{position:"fixed",top:0,left:0,width:255,height:"100vh",background:WH,zIndex:201,padding:"50px 0 36px",display:"flex",flexDirection:"column",boxShadow:"5px 0 28px "+P+"20"}}>
@@ -6085,6 +6185,7 @@ export default function App({ session, onLogout, onChangePassword }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
